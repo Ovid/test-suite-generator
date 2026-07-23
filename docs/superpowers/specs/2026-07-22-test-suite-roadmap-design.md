@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22
 **Last revised:** 2026-07-23
-**Status:** Approved design, revised after a fourth pushback review (overthinking pass); not yet implemented
+**Status:** Approved design, revised after a fourth pushback review (overthinking pass); later revised from trial feedback (zero-repo-knowledge menu premise; build-mode commits its artifacts; phases commit onto the current working branch, no per-phase branch; `Tier:` field + per-tier run/coverage commands instead of a layout mandate; run instructions surfaced on completion; plain-language rule for all developer-facing output; clean test-output discipline)
 **Format:** Agent Skill per https://agentskills.io/specification
 
 ## Purpose
@@ -24,7 +24,9 @@ Motivating source: https://curtispoe.org/articles/watching-claude-sonnet-outperf
 
 The load-bearing claims from that article:
 
-- Three tiers: unit, integration, end-to-end.
+- Three tiers: unit, integration, end-to-end — and they must stay distinguishable
+  and independently coverage-runnable (see *The tiers must be independently
+  runnable*).
 - On legacy code: *"you're not trying to fix the bugs; you're trying to nail down
   current behavior."*
 - Weak tests are the enemy: *"`foo is not Null` often isn't a real test."*
@@ -116,7 +118,7 @@ Identify the stack from manifests and config rather than assumption:
 `*.csproj`, `mix.exs`, and so on. Then determine how tests are invoked and what
 test files already exist.
 
-Detect **three** things, all from repo signals rather than a built-in table:
+Detect **four** things, all from repo signals rather than a built-in table:
 
 1. How tests are invoked, and what test files exist.
 2. Whether a **coverage tool** is available (used read-only in Stage 3 for
@@ -127,6 +129,14 @@ Detect **three** things, all from repo signals rather than a built-in table:
    is an input to Stage 3: an integration or e2e phase that needs constructed data
    cannot be planned honestly against a repo that has no way to construct it. See
    *Test-data strategy*.
+4. **How the repo separates test tiers, and the per-tier run + coverage
+   command.** The tiers must end up distinguishable and independently
+   coverage-runnable (see *The tiers must be independently runnable*). The
+   mechanism is a *selector* the ecosystem already expresses and it is not
+   universal — a path-selected directory only where the ecosystem uses an
+   external test tree, otherwise a tag/marker, a build target, or a label.
+   Detect which, and derive per tier the command that runs just that tier with
+   coverage. Do not assume the selector is a directory.
 
 The skill must never hardcode a language. Where it needs a per-ecosystem fact it
 looks for the signal in the repo rather than consulting a built-in table.
@@ -231,14 +241,33 @@ Loaded when `docs/test-roadmap.md` exists. This is the path every run after the
 first takes, so it must be quiet about anything the developer has already settled.
 
 1. Read `## Decisions` from the roadmap. Do not re-ask anything recorded there.
+   Place the phase's tests per its `Tier:` and the recorded organization.
 2. Select the candidate phase per the *Completion model* protocol.
 3. Write the tests for that phase.
 4. Run `break-it-check.md`. **This gate is mandatory. No phase latches without it.**
 5. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit.
+6. **Surface run instructions** for the tests just landed — drawn verbatim from
+   the `## Decisions` per-tier commands: how to run *just this phase's* tests, this
+   tier *with coverage*, and *the whole suite*. The developer may not know the
+   repo, the runner, or the language, so leaving them to reconstruct the commands
+   fails the same zero-repo-knowledge premise the menus assume. Recorded commands,
+   not invented ones — a command that has drifted surfaces as a failed run the
+   developer sees, not as silent wrong advice.
 
 Execute mode writes test code. It does not write production code — and it never
 needs a path-based rule to enforce that, because bug injection happens in a
 throwaway worktree that is discarded, never in the developer's tree.
+
+**The tests it writes produce a clean run** — no spurious warnings or stray
+STDOUT/STDERR. Noise buries the signal, and a suite that always warns trains the
+developer to ignore warnings, so the one warning that was a real bug scrolls past
+unnoticed. Order of preference: (1) if the output *matters* — a warning that
+should or shouldn't fire — treat it as behavior and **capture and assert it**, at
+which point it's a test, not noise; (2) suppress uncontrollable third-party
+chatter narrowly at the test boundary, scoped so a *new* warning still stands
+out; (3) never let the written tests add their own debug prints. Where a clean
+run genuinely isn't achievable, say so plainly rather than shipping a suite that
+cries wolf.
 
 ### Why TDD is not bundled
 
@@ -408,8 +437,30 @@ Every approach is presented as a menu, unbatched, and every menu contains:
 
 - each option, with **pros and cons**;
 - a **recommendation** and the **reason** for it;
-- an option to **dispatch a subagent for an adversarial pushback review against
-  the presented options**.
+- a final **deep dive** option to **dispatch a subagent for an adversarial
+  pushback review against the presented options** — challenging the menu itself
+  and surfacing any better option it missed.
+
+Every menu assumes the developer **does not know this repository** — legacy and
+unfamiliar code is the case the skill exists for, so the person answering may be
+seeing the repo for the first time. The options and the recommendation are
+therefore written to be answerable with no prior knowledge of the codebase: the
+recommendation must be strong enough to follow blind and justified by what *this
+repo actually is* (detected stack, existing tests, structure), not by generic
+preference. This premise governs every question the skill asks, not only these
+menus.
+
+**Everything the skill says to the developer is in plain language.** The
+developer knows nothing about the skill's internals, so its working vocabulary —
+`break-it-check`, "the gate," "latch," "mutation," "the ledger",
+`boundary`/`scaffold`, "theater," `Landed:`, "build/execute mode" — stays inside
+the reference files and is *translated* whenever it reaches the developer: name
+what you're doing in ordinary words, report findings as what they mean for the
+tests, and gloss any artifact term on first use. The deep-dive option, for
+instance, is *presented* as "have a second, skeptical pass challenge these
+options and look for a better one," not as "dispatch an adversarial-pushback
+subagent." Single-sourced in `test-pushback.md § Talking to the developer`; the
+mode files and `break-it-check.md` point at it.
 
 That format is specified once in `test-pushback.md § Presenting approaches`; both
 mode files point at it, so the router stays dumb.
@@ -418,12 +469,20 @@ mode files point at it, so the router stays dumb.
 dominant default and are cheap to reverse, so they are *decided* and recorded in
 `## Decisions`, not voted on:
 
-- **Test organization** — mirror the source tree, or follow ecosystem convention.
-  Putting it on the menu would repeat the approaches-vs-findings error and breach
-  the 4–6 ceiling requirement 1 leans on; worse, a chosen "group by tier" layout
-  makes two phases share a directory, which *manufactures* the false-landed
-  collision the completion model was rewritten to avoid. It is a default, recorded
-  once.
+- **Test organization** — a *detected fact* about how the repo already separates
+  tiers, not a taste choice, so it is recorded, not menued (menuing it would breach
+  the 4–6 ceiling requirement 1 leans on, for a decision that isn't the developer's
+  to make). The organization must leave the tiers distinguishable and
+  independently coverage-runnable (see *The tiers must be independently runnable*),
+  but the *form* is whatever the ecosystem expresses — a tier directory only where
+  it uses an external, path-selected test tree, a tag/marker/build-target/label
+  elsewhere. An earlier version argued against a "group by tier" layout because two
+  phases sharing a tier directory would manufacture a false-landed collision; that
+  reasoning is now spent — the completion model was rewritten so `Landed:` is the
+  sole signal, nothing infers completion from a directory's contents, so two phases
+  in one tier directory each latch via their own `Landed:` line and collide on
+  nothing. Tier grouping is safe; it just isn't a *menu* item, because it is
+  detected, not chosen.
 
 **Findings** — verdicts derived from evidence: weak-test classifications, mock
 classifications. These are not approaches. Asking a human to choose between
@@ -448,6 +507,42 @@ to how carefully a human will read a list.
 **Decisions are recorded** in a `## Decisions` section at the top of
 `docs/test-roadmap.md`. Execute mode reads it and never re-asks. Without this,
 menus fire again on every resume and requirement 2 fails through the front door.
+Recorded at minimum: the test framework/runner, suite strategy, phase ordering,
+the weak-test rewrite decision, the test-organization default, and the per-tier
+run + coverage commands (see next).
+
+## The tiers must be independently runnable
+
+A requirement from the motivating source, made explicit: the suite must leave the
+three tiers (1) **distinguishable** — a developer new to the repo can tell which
+tier a test belongs to — and (2) **independently coverage-runnable** — coverage
+can be run over just one tier.
+
+Distinguishability is carried by the `Tier:` field on every phase (and by the
+on-disk layout where the ecosystem already separates tiers there). Independent
+coverage is carried by **recording, per tier, the command that runs it with
+coverage** — because per-tier coverage is *not* a universal "point the coverage
+tool at a directory" operation:
+
+- Coverage instruments the **source under test**, never the test files, so
+  pointing a coverage tool at a directory of tests does not scope coverage to a
+  tier. What scopes it is the tier's *selector* applied to the coverage run.
+- That selector is a directory only in ecosystems with external, path-selected
+  test trees (Python, PHP, Ruby, Perl). Elsewhere it is a tag (Go `-tags`,
+  `pytest -m`), a build target (`cargo test --lib`/`--test`, a `.csproj`, a Jest
+  project), or a label (CTest `-L`).
+- In colocated-test ecosystems the tier directory **cannot exist**: Go `_test.go`
+  files must live in the package under test, and Rust unit tests are
+  `#[cfg(test)]` modules compiler-bound inside `src/`. Both reproduced by
+  construction — see *Verification notes*.
+
+So the skill records the *commands*, not a layout. The only invariant that holds
+across every ecosystem is "there is a command that runs exactly one tier with
+coverage," and its selector is detected in Stage 1, never assumed. This is why an
+earlier layout-mandate framing (tier directories as the default shape) was
+dropped: it hardcodes one selector — the path — as if universal, which is the
+per-ecosystem-table failure the stack-agnostic charter forbids, and it is outright
+impossible in Go and Rust.
 
 ## Test-double & fixture ledger
 
@@ -512,13 +607,20 @@ become a test-suite optimizer.
 ```markdown
 ## Phase 3: Billing retry & dunning integration tests
 
-Catches: a retry exhausting without transitioning the account to dunning;
-         a partial refund double-crediting.
+Tier:     integration
+Catches:  a retry exhausting without transitioning the account to dunning;
+          a partial refund double-crediting.
 Produces: tests/integration/billing/
 Branch:   billing-integration-tests
 Landed:
 ```
 
+- **`Tier:`** — exactly one of `unit`, `integration`, `e2e`. Stage 3 already groups
+  behaviors by tier, so this is honestly authorable at plan time (unlike the
+  rejected `Covers:` field). It makes which tier a phase belongs to explicit in the
+  roadmap — the distinguishability half of the tier requirement, independent of
+  where files land — and selects which recorded per-tier run/coverage command
+  applies. See *The tiers must be independently runnable*.
 - **`Catches:`** — the anti-theater gate from Stage 4, preserved in the artifact so
   a later reader can audit whether the phase was honest. It is also
   `break-it-check`'s input: it names the *behavior* to mutate. It deliberately
@@ -527,7 +629,16 @@ Landed:
 - **`Produces:`** — paths the phase creates, **as documentation only**. It is no
   longer a completion signal (see *Completion model* — that inference was removed).
   A later reader uses it to find the phase's output; the control flow does not.
-- **`Branch:`** — a human-readable breadcrumb. **Not a machine signal.**
+- **`Branch:`** — a human-readable breadcrumb recording the working branch the
+  phase's tests were committed on. **Not a machine signal, and not a per-phase
+  branch the skill creates.** Execute mode commits each phase onto the current
+  working branch; the suite accumulates there. The skill deliberately does not
+  spin each phase onto its own unmerged branch — unmerged local branches do not
+  survive a fresh clone (the same failure that sank branch-merge detection as a
+  completion signal), so putting the test *files* there would strand the suite
+  off the working branch and break requirement 2. Per-phase review survives
+  anyway: each phase is its own commit (`git show <Landed sha>`), and
+  `agentic-review` runs against the accumulated branch before it merges upstream.
 - **`Landed:`** — empty until `break-it-check` passes, then
   `YYYY-MM-DD <sha> (<operator>)`. The operator name is gate provenance: a later
   reader can judge whether the gate was honest without opening any other file. It
@@ -537,7 +648,7 @@ Landed:
   *Completion model*.
 
 Each phase's definition-of-done includes a recommendation to run `agentic-review`
-on the branch before merging, if available. It is not bundled: it requires a fresh
+on the accumulated working branch before it is merged upstream, if available. It is not bundled: it requires a fresh
 session with no substantive history, so invoking it from inside execute mode would
 be inert.
 
@@ -577,14 +688,18 @@ Only the first of those two is a safety violation, but the design avoids both wh
 it cheaply can.
 
 The original bug was never that the agent asked. It was that it asked
-empty-handed:
+empty-handed — and a jargon-laden question fails the same way for a developer new
+to the repo. The question must carry its evidence *and* be in plain words
+(*Talking to the developer*):
 
-- Bad: *"Phase 3 shows Pending. Is it complete?"*
-- Good: *"Phase 3 declares `tests/integration/billing/` on branch
-  `billing-integration-tests`, and its `Landed:` line is empty. Did this land, or
-  should I execute it?"*
+- Bad (empty-handed): *"Phase 3 shows Pending. Is it complete?"*
+- Bad (jargon): *"Phase 3 declares `tests/integration/billing/`; its `Landed:`
+  line is empty — did it land, or should I execute it?"*
+- Good: *"I don't see tests yet for **billing retries** (I'd add them under
+  `tests/integration/billing/`). Did someone already write these — maybe on a
+  branch called `billing-integration-tests` — or should I write them now?"*
 
-The phase block supplies the evidence; the developer supplies the answer.
+The phase's recorded details supply the evidence; the developer supplies the answer.
 
 ### Protocol
 
@@ -593,7 +708,7 @@ The phase block supplies the evidence; the developer supplies the answer.
 | Step | Where | Action |
 |---|---|---|
 | 1 | main agent | `Landed:` populated? → done. Stop. No git, no question. |
-| 2 | main agent | `Landed:` empty → surface the phase block (`Catches:`/`Produces:`/`Branch:`) and ask the human: *"did this land, or should I execute it?"* On *"execute,"* run the phase. On *"it landed,"* write the `Landed:` line from what the human reports. |
+| 2 | main agent | `Landed:` empty → ask the developer, in plain words (*Talking to the developer*), whether these tests were already written or should be written now — using the phase's recorded details as evidence and pointing them at where to check. On *"write them,"* run the phase. On *"already done,"* record it from what they report. |
 
 Step 1 ends the churn permanently: once latched, the phase is never re-examined by
 the control flow — *except* that `Landed:` is human-clearable. The skill never
@@ -704,8 +819,15 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | `Landed:` latch | Human-clearable, gate provenance on the line | Monotonic/terminal; explicit `redo` command |
 | Staleness detection | `break-it-check`'s "no code path implements this `Catches:`" row | `generated-at:` anchor sha + per-phase `Covers:` |
 | Approach menus | Every approach (~4-6 per run), unbatched, always offering adversarial pushback | Two fixed gates only; menus on request only |
-| Test organization | Recorded default (mirror source tree / convention) in `## Decisions` | An approach-menu item |
+| Test organization | Recorded default in `## Decisions`; detected, not menued | An approach-menu item |
+| Tier distinguishability + per-tier coverage | `Tier:` field per phase + detect the tier *selector* and record per-tier run+coverage *commands* | Mandate `unit/ integration/ e2e/` directories (impossible in Go/Rust; assumes path-selector universally) |
+| Run instructions on completion | Execute mode surfaces how to run this phase's tests, the full suite, and per-tier coverage when a phase lands | Assume the developer knows the repo's commands and leave them to find them |
+| Talking to the developer | Plain language everywhere; internal vocabulary (`break-it-check`, "gate", `boundary`/`scaffold`, `Landed:`) translated on the way out; single-sourced in `test-pushback.md` | Let internal codenames and field labels reach the developer as-is |
+| Test output cleanliness | Tests produce a clean run; meaningful output is captured and asserted, uncontrollable noise suppressed narrowly | Let tests emit warnings/chatter (buries signal; trains the developer to ignore warnings that may hide bugs) |
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
+| Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
+| Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
 
@@ -757,6 +879,20 @@ review.
 - `git worktree prune` reclaims a stale `.git/worktrees/` record after the checkout
   dir is deleted out from under git (`gitdir file points to non-existent location`).
   This is what makes step 1's sweep self-healing after a crash.
+- **Per-tier coverage is not a directory-path operation in Go or Rust** (scratch
+  repos `gomod`, `rustcrate`; Go 1.26.5, Rust/cargo 1.97.1). Reproduced: (a) a Go
+  unit test moved out of its package into a `unit/` dir fails to compile —
+  `name add not exported by package calc`; (b) `go test -tags=integration` selects
+  the integration tier while both tiers share a directory, and coverage scope is
+  set by `-coverpkg` (source packages), reporting on `calc/calc.go`, never on a
+  test dir; (c) a Rust unit test calling a private `helper` compiles inline via
+  `#[cfg(test)]` but fails from `tests/foo.rs` — `error[E0603]: function 'helper'
+  is private`; (d) `cargo test --lib` vs `--test foo` selects the tier by build
+  target, and instrumented coverage (`-C instrument-coverage` + `xcrun llvm-cov`)
+  reports on `src/lib.rs` for both, differing only by which build-target binary
+  ran. Together these reproduce that "per-tier coverage = point at a tier
+  directory" is false-to-impossible outside path-selected ecosystems — the basis
+  for recording per-tier *commands* rather than mandating a layout.
 
 **Read directly in the installed skills:**
 
@@ -776,6 +912,13 @@ review.
   tracks ignored files, not reproduced.
 - `agentic-review`'s fresh-session precondition (reported by a subagent). The
   decision not to bundle it predates this reason.
+- Java's tier selector (Surefire runs `*Test`, Failsafe runs `*IT`; JaCoCo binds
+  coverage per plugin execution, not by directory) and the other non-path selectors
+  in the per-language survey (.NET projects, Jest projects, CTest labels, Elixir
+  tags, Swift targets). Standard, documented tool behavior; not reproduced here.
+  Go and Rust — the two ecosystems where a tier directory is *impossible*, not
+  merely non-idiomatic — were reproduced above, which is what the mechanism claim
+  most needed.
 
 **No longer relied upon** (the in-tree write-fence they supported was removed):
 `git checkout -- <path>` restoring from the index, and `git diff --quiet` exiting 0

@@ -13,7 +13,7 @@ Identify the stack from manifests and config rather than assumption —
 never hardcode a language. Where it needs a per-ecosystem fact, it looks for the
 signal in the repo rather than consulting a built-in list.
 
-Detect **three** things, all from repo signals:
+Detect **four** things, all from repo signals:
 
 1. **How tests are invoked, and what test files exist.** Read the manifest's test
    script/target and enumerate the test files it would run.
@@ -25,6 +25,18 @@ Detect **three** things, all from repo signals:
    testcontainers, a `conftest.py`, a `factories/` or `fixtures/` directory. This
    feeds Stage 3: an integration or e2e phase that needs constructed data cannot
    be planned honestly against a repo with no way to construct it.
+4. **How this repo separates test tiers, and the per-tier run + coverage
+   command.** The three tiers — unit, integration, e2e — must end up
+   *distinguishable* and *independently coverage-runnable* (a stated requirement,
+   see *The three tiers must be independently runnable*, below). The mechanism
+   that makes them so is **not universal** — it is a *selector* the ecosystem
+   already expresses, and it varies: a test directory (`tests/unit/`,
+   path-selected), a filename marker, a test tag/marker (`pytest -m`, Go
+   `//go:build`), a build target (`cargo test --lib`/`--test`, a `.csproj` or
+   Jest project), or a test label (CTest `-L`). Detect which the repo uses, and
+   derive per tier the command that runs *just that tier* and the command that
+   runs it *with coverage*. **Do not assume the selector is a directory.** These
+   per-tier commands are recorded in `## Decisions` (Stage 5).
 
 **Stage 1's output is a discovery, not a boundary.** It tells you what tests exist
 and how to run them; it does not exhaustively partition the repo into "test" and
@@ -120,12 +132,31 @@ Two artifacts, written in this order:
   This is the sink for anything unbounded (Stage 2's full list, the ledger in
   full); main context never carries it.
 
+**Both artifacts are read by the developer, so they follow `references/test-pushback.md
+§ Talking to the developer`.** In particular the ledger's class names
+(`boundary`, `scaffold`, `data`) and any pattern names cited from
+`test-theater.md` are jargon to a newcomer — gloss each in plain words the first
+time it appears in the analysis doc (e.g. *"`scaffold` — a stand-in that only
+exists because the code is hard to test as written; it marks test debt to retire
+later"*). A weak-test verdict states, in plain terms, what regression the test
+would let through, not just its pattern label.
+
 **`docs/test-roadmap.md` is always the target.** The skill never writes into an
 existing `docs/roadmap.md` — that would risk phase-numbering collisions and
 clobbering hand-written entries that live there for other reasons. This path is
 also the router's signal for which mode to load on the next invocation, so it is
 **load-bearing and not configurable** — do not rename it, alias it, or write
 phases anywhere else.
+
+**Then commit both artifacts.** `git add docs/test-roadmap.md
+docs/test-suite-analysis.md` and commit them before build mode ends. This is
+not optional bookkeeping: the roadmap is the router's resume signal, and
+requirement 2 is resumability across *fresh clones*. An uncommitted roadmap
+does not survive a clone, so the next run finds no `docs/test-roadmap.md` and
+silently rebuilds from scratch — the exact churn resumability exists to
+prevent. Execute mode already commits each `Landed:` line the same way (step
+5); build mode committing its own output is the same rule at the front of the
+lifecycle, not a new one.
 
 ### The canonical phase format
 
@@ -135,8 +166,9 @@ exact shape:
 ```markdown
 ## Phase 3: Billing retry & dunning integration tests
 
-Catches: a retry exhausting without transitioning the account to dunning;
-         a partial refund double-crediting.
+Tier:     integration
+Catches:  a retry exhausting without transitioning the account to dunning;
+          a partial refund double-crediting.
 Produces: tests/integration/billing/
 Branch:   billing-integration-tests
 Landed:
@@ -144,6 +176,14 @@ Landed:
 
 Field semantics:
 
+- **`Tier:`** — exactly one of `unit`, `integration`, `e2e`. Stage 3 already
+  groups behaviors by tier, so this is honestly authorable at plan time (unlike
+  the rejected `Covers:` field, which asked Stage 3 to enumerate something it
+  never produces). It makes *which tier a phase belongs to* explicit in the
+  roadmap itself — satisfying the distinguishability half of the tier
+  requirement without depending on where the files physically land — and it
+  selects which recorded per-tier run/coverage command (see `## Decisions`)
+  applies to this phase.
 - **`Catches:`** — the anti-theater gate from Stage 4, preserved in the artifact
   so a later reader can audit whether the phase was honest. It is also
   `break-it-check`'s behavior input: it names the *behavior* to mutate, not a
@@ -152,14 +192,18 @@ Field semantics:
 - **`Produces:`** — paths the phase creates, as **documentation only**. It is
   **not** a completion signal. A later reader uses it to find the phase's
   output; no control flow in this skill infers phase status from it.
-- **`Branch:`** — a human-readable breadcrumb. **Not a machine signal.**
+- **`Branch:`** — a human-readable breadcrumb recording the working branch the
+  phase's tests were committed on. **Not a machine signal, and not a per-phase
+  branch the skill creates** — execute mode commits each phase onto the current
+  working branch and the suite accumulates there (see `execute-test-roadmap.md
+  § What execute mode writes`).
 - **`Landed:`** — empty until `break-it-check` passes for this phase, then set
   to `YYYY-MM-DD <sha> (<operator>)`. **Human-clearable; the skill itself never
   clears it.** A cleared `Landed:` line is a human declaring the phase needs
   redoing — the skill has no mechanism that would ever produce that state on
   its own.
 
-Each phase's definition-of-done includes a recommendation to run `agentic-review` on the branch before merging, if available. This is not bundled into execute mode: `agentic-review` requires a fresh session with no substantive history, so calling it from within the test-roadmap session would be inert.
+Each phase's definition-of-done includes a recommendation to run `agentic-review` on the accumulated working branch before it is merged upstream, if available. This is not bundled into execute mode: `agentic-review` requires a fresh session with no substantive history, so calling it from within the test-roadmap session would be inert.
 
 ### The test-double & fixture ledger
 
@@ -192,11 +236,23 @@ same definition rather than drifting apart.
 
 **Not on the menu — recorded defaults.** Some things look like a choice but have
 a dominant default and are cheap to reverse, so they are decided once and
-recorded, not voted on. **Test organization** — mirror the source tree, or
-follow ecosystem convention — is one of these: putting it on a menu would blow
-the 4–6-approach ceiling and, worse, an operator-chosen "group by tier" layout
-would put two phases in the same directory, manufacturing the exact
-false-landed directory collision the completion model exists to avoid.
+recorded, not voted on. **Test organization** is one of these: it is a *detected
+fact* about how the repo already separates tiers, not a taste choice, so it goes
+to `## Decisions`, not to a menu — putting it on one would blow the 4–6-approach
+ceiling for a decision that isn't the developer's to make.
+
+The organization must leave the tiers distinguishable and independently
+coverage-runnable (see below), but the *form* is whatever the detected ecosystem
+expresses — a tier directory only where the ecosystem uses an external,
+path-selected test tree, and a tag/marker/build-target/label elsewhere. An
+earlier version of this note argued against a "group by tier" layout on the
+grounds that two phases sharing a tier directory would manufacture a false-landed
+collision. That reasoning is now spent: the completion model was rewritten so
+`Landed:` is the sole signal (see `execute-test-roadmap.md § Completion model`) —
+nothing infers completion from a directory's contents anymore, so two phases in
+one tier directory each latch via their own `Landed:` line and collide on
+nothing. Tier grouping is therefore safe; it just isn't an operator *menu* item,
+because it's detected, not chosen.
 
 **Findings** — verdicts derived from evidence: a weak-test classification, a
 mock classification. These are not approaches; asking a human to vote on a
@@ -217,6 +273,36 @@ written to the ledger during this stage, same reasoning as above: the harm of
 under-classifying is asymmetric, so inattention is made safe by construction
 rather than relying on a human reading every entry carefully.
 
+### The three tiers must be independently runnable
+
+The suite must leave unit, integration, and e2e (1) **distinguishable** — a
+developer new to the repo can tell which tier a test belongs to — and (2)
+**independently coverage-runnable** — they can run coverage over *just* the unit
+tier, or *just* integration, and so on.
+
+The distinguishability half is carried by the `Tier:` field on every phase (and,
+where the ecosystem's convention already separates tiers on disk, by the layout
+too). The independent-coverage half is carried by **recording, per tier, the
+command that runs it with coverage** — because per-tier coverage is *not* a
+universal "point the coverage tool at a directory" operation:
+
+- Coverage instruments the **source under test**, never the test files, so
+  pointing a coverage tool at a directory of tests does not scope coverage to a
+  tier. What scopes it is the tier's *selector* applied to the coverage run.
+- The selector is a directory only in ecosystems that use external,
+  path-selected test trees (Python, PHP, Ruby, Perl). Elsewhere it is a tag
+  (Go `-tags`, `pytest -m`), a build target (`cargo test --lib`/`--test`, a
+  `.csproj`, a Jest project), or a label (CTest `-L`).
+- In colocated-test ecosystems the tier directory *cannot exist*: Go `_test.go`
+  files must live in the package under test, and Rust unit tests are
+  `#[cfg(test)]` modules compiler-bound inside `src/` — both reproduced by
+  construction (see the design's *Verification notes*). Mandating a `unit/`
+  directory there is impossible, not merely awkward.
+
+So the skill records the *commands*, not a layout. This is the only formulation
+that holds across every ecosystem — the invariant is "there is a command that
+runs exactly one tier with coverage," and its selector is detected, not assumed.
+
 ### `## Decisions`
 
 Every recorded default and every approach the developer picked is written to a
@@ -225,6 +311,21 @@ phase. Execute mode reads this section on every resume and **never re-asks**
 anything recorded there — without it, menus would fire again on every run and
 the resumability requirement fails through the front door. Record at minimum:
 the chosen test framework/runner, the suite strategy, phase ordering, the
-weak-test rewrite decision (if grading ran), and the test-organization default.
+weak-test rewrite decision (if grading ran), the test-organization default, and
+**the per-tier run + coverage commands** — one line each for unit, integration,
+and e2e — so both execute mode and the developer can run and cover each tier
+independently. A worked shape:
+
+```markdown
+## Decisions
+
+Tiers (run | coverage):
+- unit:        `pytest tests/unit`            | `pytest --cov=pkg tests/unit`
+- integration: `pytest -m integration`        | `pytest --cov=pkg -m integration`
+- e2e:         `playwright test`              | (no coverage tool for this tier)
+```
+
+Where a tier has no coverage tool, say so on its line rather than omitting it —
+an absent line reads as "forgotten," a stated "(none)" reads as "checked."
 Keep each entry to the decision and its one-line reason — this section is a
 record for a machine to skip past, not a design document.

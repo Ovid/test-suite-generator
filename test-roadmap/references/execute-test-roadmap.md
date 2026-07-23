@@ -8,14 +8,17 @@ with writing tests.
 
 ## The execute-mode loop
 
-Five steps, in order:
+Six steps, in order:
 
 1. **Read `## Decisions` from the roadmap. Never re-ask anything recorded
    there.** The chosen test framework/runner, suite strategy, phase ordering,
-   the weak-test rewrite decision, the test-organization default — all of it
-   was already decided during build mode's Stage 3/Stage 5 and is written down
-   for exactly this reason. Re-asking it here is not caution, it is the
-   resumability requirement failing through the front door.
+   the weak-test rewrite decision, the test-organization default, the per-tier
+   run + coverage commands — all of it was already decided during build mode's
+   Stage 3/Stage 5 and is written down for exactly this reason. Re-asking it
+   here is not caution, it is the resumability requirement failing through the
+   front door. Place the phase's tests according to its `Tier:` and the recorded
+   organization, and use the recorded per-tier command when running or covering
+   that tier.
 2. **Select the candidate phase per the *Completion model* protocol, below.**
    Exactly one phase at a time — the protocol's questioning fires for the
    candidate phase only, never as a batch sweep across every phase in the
@@ -28,9 +31,41 @@ Five steps, in order:
    right. Skipping this step is skipping the entire mechanism that
    distinguishes this skill's suite from `assert result is not None` a green
    exit code would have waved through.
-5. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit.** This line is
-   only ever written after step 4 passes — it is the gate's own output, not a
-   separate bookkeeping step that could drift out of sync with it.
+5. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit on the current
+   working branch.** This line is only ever written after step 4 passes — it
+   is the gate's own output, not a separate bookkeeping step that could drift
+   out of sync with it.
+6. **Surface run instructions for the tests just landed.** See *Run
+   instructions*, below.
+
+### Run instructions
+
+The developer running this skill may not know the codebase, the test runner, or
+even the language. So when a phase's tests are ready, do not leave them to
+reconstruct how to run anything. Print a short block, drawn verbatim from the
+`## Decisions` per-tier commands (never invented on the spot), giving:
+
+- **The new tests** — the command that runs *just this phase's* tests.
+- **This tier with coverage** — the recorded coverage command for the phase's
+  `Tier:`, so the developer can see what these tests cover. Where that tier has
+  no coverage tool, say so explicitly rather than omitting the line.
+- **The whole suite** — the command that runs every test, so they can confirm
+  nothing else broke.
+
+A worked shape:
+
+```
+Phase 3 (integration) tests are in and committed. To run them:
+
+  just these tests:   pytest tests/integration/billing/
+  with coverage:      pytest --cov=billing -m integration
+  the full suite:     pytest
+```
+
+Keep it to the commands and one label each — this is an aide-mémoire for someone
+unfamiliar with the repo, not documentation. The commands are the recorded ones;
+if a command has drifted (the runner changed since build mode), that surfaces
+here as a failed run the developer can see, not as silent wrong advice.
 
 ### What execute mode writes
 
@@ -38,8 +73,49 @@ Execute mode writes **test code only**. It never writes production code, and
 it needs no path-based fence to enforce that — the property that matters
 here, that mutation never touches the developer's tree, is enforced by
 `break-it-check` running its bug injection in a throwaway `git worktree`
-(Inviolate #2). Nothing in this mode's own five steps stands between it and
+(Inviolate #2). Nothing in this mode's own steps stands between it and
 production code, so there is nothing here for a path fence to guard.
+
+**Each phase's tests commit onto the current working branch; the skill creates
+no per-phase branch.** The suite accumulates in place — as phases land, the
+test directory on the branch the developer is already on fills up, and the
+`Landed:` SHA points at a commit that branch can actually reach. This is the
+literal reading of `break-it-check`'s "commit on the developer's real tree"
+(step 6). The skill deliberately does **not** spin each phase onto its own
+branch and leave it unmerged: unmerged local branches do not survive a fresh
+clone — the very failure the completion model rejects branch-merge detection
+over — so putting the test *files* there would strand the suite off the
+working branch and break resumability (requirement 2). Per-phase review is not
+lost: each phase is its own commit, reviewable with `git show <Landed-sha>`,
+and `agentic-review` runs against the accumulated working branch before it is
+merged upstream.
+
+### Keep the test run clean
+
+The tests this mode writes must produce a **clean run** — no spurious warnings
+or stray output to STDOUT/STDERR. Two reasons, both about the developer: noise
+buries the signal (a run that prints twenty lines of framework chatter for one
+real failure trains people to skim past it), and a suite that always warns
+teaches the developer to ignore warnings — at which point the one warning that
+*was* a real bug scrolls past unnoticed.
+
+So, in order of preference:
+
+1. **Treat meaningful output as behavior — capture and assert it.** If the code
+   under test emits a deprecation warning, a log line, or a message that *matters*
+   (it should fire, or it should *not* fire), that is behavior worth pinning:
+   capture it and assert on it, the same as any return value. A warning you
+   assert on is no longer noise — it's a test.
+2. **Suppress noise you can't assert, at the test boundary.** Third-party
+   chatter you can't control and don't need to pin gets silenced narrowly in the
+   test setup — not by muting all output globally, but scoped so that a *new*,
+   unexpected warning still stands out.
+3. **Never let the tests you write add their own noise** — no leftover debug
+   prints, no `warn`/`console.log` scaffolding shipped in the committed test.
+
+If clean output genuinely isn't achievable for a phase (the code is
+noisy by construction and the noise can't be captured or scoped), say so plainly
+to the developer rather than shipping a suite that cries wolf.
 
 ## Why TDD is not bundled
 
@@ -101,14 +177,23 @@ one keystroke. Being wrong toward "auto-mark done" silently skips real work —
 the one outcome the whole design is built to keep from happening quietly.
 
 The original bug behind the `Produces:`-path draft was never that the agent
-asked the human something. It was that it asked **empty-handed**:
+asked the human something. It was that it asked **empty-handed** — and, just as
+bad for a developer new to the repo, in the skill's own jargon. The question
+must carry its evidence *and* be in plain words (see `references/test-pushback.md
+§ Talking to the developer`):
 
-- Bad: *"Phase 3 shows Pending. Is it complete?"*
-- Good: *"Phase 3 declares `tests/integration/billing/` on branch
-  `billing-integration-tests`, and its `Landed:` line is empty. Did this
-  land, or should I execute it?"*
+- Bad (empty-handed): *"Phase 3 shows Pending. Is it complete?"*
+- Bad (jargon): *"Phase 3 declares `tests/integration/billing/`; its `Landed:`
+  line is empty — did it land, or should I execute it?"*
+- Good: *"I don't see tests yet for **billing retries** (I'd add them under
+  `tests/integration/billing/`). Did someone already write these — maybe on a
+  branch called `billing-integration-tests` — or should I write them now?"*
 
-The phase block supplies the evidence; the developer supplies the answer.
+The phase's recorded details supply the evidence; the developer supplies the
+answer. Because they may not know the repo's history, tell them where to look if
+unsure — *"you can check with `git log tests/integration/billing/`, or see
+whether those test files already exist"* — so the question is answerable without
+prior knowledge of what has and hasn't been done here.
 
 ### Protocol
 
@@ -118,7 +203,7 @@ The phase block supplies the evidence; the developer supplies the answer.
 | Step | Where | Action |
 |---|---|---|
 | 1 | main agent | `Landed:` populated? → done. Stop. No git, no question. |
-| 2 | main agent | `Landed:` empty → surface the phase block (`Catches:` / `Produces:` / `Branch:`) and ask the human: *"did this land, or should I execute it?"* On *"execute,"* run the phase (the execute-mode loop, above). On *"it landed,"* write the `Landed:` line from what the human reports. |
+| 2 | main agent | `Landed:` empty → ask the developer, in plain words (§ Talking to the developer), whether these tests were already written or should be written now — using the phase's recorded details as evidence and pointing them at where to check. On *"write them,"* run the phase (the execute-mode loop, above). On *"already done,"* record it from what they report. |
 
 Step 1 ends the churn permanently for a phase that has already latched: once
 `Landed:` is populated, the control flow never re-examines that phase again —

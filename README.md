@@ -55,14 +55,14 @@ remember:
 The roadmap file it writes (`docs/test-roadmap.md`) is the memory; `/test-roadmap` is
 the only verb. You never have to recall a second command or which step you were on.
 
-> This is how it's *meant* to be invoked. The skill isn't packaged yet — see **Status**
-> below.
-
 ## Status
 
-This is a **design repository**. The skill isn't built yet — what's here is the design,
-hardened through four rounds of adversarial review, with a decision log that records not just
-what was chosen but what was rejected and why.
+**Alpha.** The skill is built and installable — it's the Markdown files under
+[`test-roadmap/`](test-roadmap/) — but it's early, unpackaged, and not yet published to a
+skills registry, so expect rough edges and install it by hand for now.
+
+The design behind it is hardened through multiple rounds of adversarial review, with a
+decision log that records not just what was chosen but what was rejected and why:
 
 - **The design:** [`docs/superpowers/specs/2026-07-22-test-suite-roadmap-design.md`](docs/superpowers/specs/2026-07-22-test-suite-roadmap-design.md)
 
