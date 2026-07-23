@@ -158,6 +158,14 @@ prevent. Execute mode already commits each `Landed:` line the same way (step
 5); build mode committing its own output is the same rule at the front of the
 lifecycle, not a new one.
 
+**Then tell the developer the total, in plain words.** Build mode's approach
+menus fire *before* any plan exists, so during them there is no phase total to
+show — the first instant it is knowable is right here, once Stage 5 has written
+every phase. State it at the handoff: *"Planned 14 phases. Run `/test-roadmap` to
+start Phase 1 of 14."* This is the developer's first sight of the end of the
+tunnel, and from here on every phase the skill names carries its `Phase X of Y`
+per `references/test-pushback.md § Talking to the developer`.
+
 ### The canonical phase format
 
 Every phase, in both build mode's draft and execute mode's updates, takes this

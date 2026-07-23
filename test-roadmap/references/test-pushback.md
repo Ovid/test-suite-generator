@@ -43,6 +43,26 @@ Translate, don't emit:
 The test is simple: if a sentence would only make sense to someone who has read
 this skill's design, rewrite it until it makes sense to someone who has not.
 
+**Always locate a phase for the developer: "Phase X of Y."** Whenever you name a
+phase to the developer, render `Phase <its written number> of <total phases in
+docs/test-roadmap.md>`, so they always know how much is left — the end of the
+tunnel, not just the current step. On the forward-looking "next phase" prompt and
+on any completion question, add progress: `— N done, M to go after this`.
+Recompute all three from the roadmap on every run — never cache them:
+
+- **Y** = count of phase blocks currently in `docs/test-roadmap.md`. Because it
+  is recomputed each run, it stays honest when a human adds or drops a phase: the
+  total just updates next time, rather than going stale.
+- **done** = count of phases whose `Landed:` line is filled in.
+- **M** = Y − done − 1 (everything neither finished nor the phase in hand).
+
+X (a phase's written number) and the done-count are **independent** — a phase can
+be finished out of order, so do not assume everything numbered below X is done;
+report both from the file. Use plain words: say "done," never "landed," "latched,"
+or "of Y phases in the roadmap." A worked shape, numbers adding up (7 + this one +
+6 = 14): *"Next is **Phase 8 of 14** — 7 done, 6 to go after this: Logger level
+filtering & message formatting."*
+
 ---
 
 ## § Presenting approaches
