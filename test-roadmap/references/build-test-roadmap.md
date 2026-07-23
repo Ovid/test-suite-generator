@@ -127,6 +127,16 @@ also the router's signal for which mode to load on the next invocation, so it is
 **load-bearing and not configurable** — do not rename it, alias it, or write
 phases anywhere else.
 
+**Then commit both artifacts.** `git add docs/test-roadmap.md
+docs/test-suite-analysis.md` and commit them before build mode ends. This is
+not optional bookkeeping: the roadmap is the router's resume signal, and
+requirement 2 is resumability across *fresh clones*. An uncommitted roadmap
+does not survive a clone, so the next run finds no `docs/test-roadmap.md` and
+silently rebuilds from scratch — the exact churn resumability exists to
+prevent. Execute mode already commits each `Landed:` line the same way (step
+5); build mode committing its own output is the same rule at the front of the
+lifecycle, not a new one.
+
 ### The canonical phase format
 
 Every phase, in both build mode's draft and execute mode's updates, takes this
@@ -152,14 +162,18 @@ Field semantics:
 - **`Produces:`** — paths the phase creates, as **documentation only**. It is
   **not** a completion signal. A later reader uses it to find the phase's
   output; no control flow in this skill infers phase status from it.
-- **`Branch:`** — a human-readable breadcrumb. **Not a machine signal.**
+- **`Branch:`** — a human-readable breadcrumb recording the working branch the
+  phase's tests were committed on. **Not a machine signal, and not a per-phase
+  branch the skill creates** — execute mode commits each phase onto the current
+  working branch and the suite accumulates there (see `execute-test-roadmap.md
+  § What execute mode writes`).
 - **`Landed:`** — empty until `break-it-check` passes for this phase, then set
   to `YYYY-MM-DD <sha> (<operator>)`. **Human-clearable; the skill itself never
   clears it.** A cleared `Landed:` line is a human declaring the phase needs
   redoing — the skill has no mechanism that would ever produce that state on
   its own.
 
-Each phase's definition-of-done includes a recommendation to run `agentic-review` on the branch before merging, if available. This is not bundled into execute mode: `agentic-review` requires a fresh session with no substantive history, so calling it from within the test-roadmap session would be inert.
+Each phase's definition-of-done includes a recommendation to run `agentic-review` on the accumulated working branch before it is merged upstream, if available. This is not bundled into execute mode: `agentic-review` requires a fresh session with no substantive history, so calling it from within the test-roadmap session would be inert.
 
 ### The test-double & fixture ledger
 

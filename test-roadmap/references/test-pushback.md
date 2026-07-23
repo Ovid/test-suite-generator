@@ -24,13 +24,24 @@ classification or a mock classification. A finding is a fact, not a choice;
 asking a human to vote on a fact is the wrong tool. Findings are fixed
 inline or recorded to the ledger, not put on a menu.
 
+**Assume the developer does not know this repository.** The person answering
+may have opened it for the first time this session — legacy and unfamiliar
+code is the case the skill exists for. So every menu must be answerable with
+no prior knowledge of the codebase: state each option in plain terms, and
+make the recommendation strong enough to follow blind, justified by what
+*this repo actually is* — its detected stack, its existing tests, its
+structure — not by generic preference. A developer who knows nothing about
+the code should be able to take the recommended option and be right.
+
 Every menu, presented unbatched, contains:
 
-- **Each option**, with **pros and cons** stated for it.
-- A **recommendation**, with the **reason** for it — not a bare pick.
-- A final option to **dispatch a subagent for an adversarial pushback
-  review against the presented options** — a way to get the menu itself
-  challenged before committing to any option on it.
+- **Each option**, with **pros and cons** stated for it — in terms a
+  newcomer to this codebase can weigh, not insider shorthand.
+- A **recommendation**, with the **reason** grounded in what was detected in
+  *this* repo — not a bare pick and not a generic default.
+- A final **deep dive** option: **dispatch a subagent to run an adversarial
+  pushback against the presented options** — challenging the menu itself and
+  surfacing any better option it missed, before committing to any one on it.
 
 **One decision at a time, unbatched.** A menu asks for exactly one decision.
 Do not bundle a second question onto it ("...and while we're at it, do you

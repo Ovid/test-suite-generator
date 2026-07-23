@@ -28,9 +28,10 @@ Five steps, in order:
    right. Skipping this step is skipping the entire mechanism that
    distinguishes this skill's suite from `assert result is not None` a green
    exit code would have waved through.
-5. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit.** This line is
-   only ever written after step 4 passes — it is the gate's own output, not a
-   separate bookkeeping step that could drift out of sync with it.
+5. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit on the current
+   working branch.** This line is only ever written after step 4 passes — it
+   is the gate's own output, not a separate bookkeeping step that could drift
+   out of sync with it.
 
 ### What execute mode writes
 
@@ -40,6 +41,20 @@ here, that mutation never touches the developer's tree, is enforced by
 `break-it-check` running its bug injection in a throwaway `git worktree`
 (Inviolate #2). Nothing in this mode's own five steps stands between it and
 production code, so there is nothing here for a path fence to guard.
+
+**Each phase's tests commit onto the current working branch; the skill creates
+no per-phase branch.** The suite accumulates in place — as phases land, the
+test directory on the branch the developer is already on fills up, and the
+`Landed:` SHA points at a commit that branch can actually reach. This is the
+literal reading of `break-it-check`'s "commit on the developer's real tree"
+(step 6). The skill deliberately does **not** spin each phase onto its own
+branch and leave it unmerged: unmerged local branches do not survive a fresh
+clone — the very failure the completion model rejects branch-merge detection
+over — so putting the test *files* there would strand the suite off the
+working branch and break resumability (requirement 2). Per-phase review is not
+lost: each phase is its own commit, reviewable with `git show <Landed-sha>`,
+and `agentic-review` runs against the accumulated working branch before it is
+merged upstream.
 
 ## Why TDD is not bundled
 
@@ -108,7 +123,11 @@ asked the human something. It was that it asked **empty-handed**:
   `billing-integration-tests`, and its `Landed:` line is empty. Did this
   land, or should I execute it?"*
 
-The phase block supplies the evidence; the developer supplies the answer.
+The phase block supplies the evidence; the developer supplies the answer. And
+because that developer may not know this repo's history, name where they'd
+check if unsure — e.g. `git log --oneline <Branch>`, or whether the phase's
+tests already exist on the current tree — so the question is answerable
+without prior knowledge of what has and hasn't landed here.
 
 ### Protocol
 

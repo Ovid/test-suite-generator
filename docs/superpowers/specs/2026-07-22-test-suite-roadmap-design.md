@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22
 **Last revised:** 2026-07-23
-**Status:** Approved design, revised after a fourth pushback review (overthinking pass); not yet implemented
+**Status:** Approved design, revised after a fourth pushback review (overthinking pass); later revised from trial feedback (zero-repo-knowledge menu premise; build-mode commits its artifacts; phases commit onto the current working branch, no per-phase branch)
 **Format:** Agent Skill per https://agentskills.io/specification
 
 ## Purpose
@@ -408,8 +408,18 @@ Every approach is presented as a menu, unbatched, and every menu contains:
 
 - each option, with **pros and cons**;
 - a **recommendation** and the **reason** for it;
-- an option to **dispatch a subagent for an adversarial pushback review against
-  the presented options**.
+- a final **deep dive** option to **dispatch a subagent for an adversarial
+  pushback review against the presented options** — challenging the menu itself
+  and surfacing any better option it missed.
+
+Every menu assumes the developer **does not know this repository** — legacy and
+unfamiliar code is the case the skill exists for, so the person answering may be
+seeing the repo for the first time. The options and the recommendation are
+therefore written to be answerable with no prior knowledge of the codebase: the
+recommendation must be strong enough to follow blind and justified by what *this
+repo actually is* (detected stack, existing tests, structure), not by generic
+preference. This premise governs every question the skill asks, not only these
+menus.
 
 That format is specified once in `test-pushback.md § Presenting approaches`; both
 mode files point at it, so the router stays dumb.
@@ -527,7 +537,16 @@ Landed:
 - **`Produces:`** — paths the phase creates, **as documentation only**. It is no
   longer a completion signal (see *Completion model* — that inference was removed).
   A later reader uses it to find the phase's output; the control flow does not.
-- **`Branch:`** — a human-readable breadcrumb. **Not a machine signal.**
+- **`Branch:`** — a human-readable breadcrumb recording the working branch the
+  phase's tests were committed on. **Not a machine signal, and not a per-phase
+  branch the skill creates.** Execute mode commits each phase onto the current
+  working branch; the suite accumulates there. The skill deliberately does not
+  spin each phase onto its own unmerged branch — unmerged local branches do not
+  survive a fresh clone (the same failure that sank branch-merge detection as a
+  completion signal), so putting the test *files* there would strand the suite
+  off the working branch and break requirement 2. Per-phase review survives
+  anyway: each phase is its own commit (`git show <Landed sha>`), and
+  `agentic-review` runs against the accumulated branch before it merges upstream.
 - **`Landed:`** — empty until `break-it-check` passes, then
   `YYYY-MM-DD <sha> (<operator>)`. The operator name is gate provenance: a later
   reader can judge whether the gate was honest without opening any other file. It
@@ -537,7 +556,7 @@ Landed:
   *Completion model*.
 
 Each phase's definition-of-done includes a recommendation to run `agentic-review`
-on the branch before merging, if available. It is not bundled: it requires a fresh
+on the accumulated working branch before it is merged upstream, if available. It is not bundled: it requires a fresh
 session with no substantive history, so invoking it from inside execute mode would
 be inert.
 
@@ -706,6 +725,9 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Approach menus | Every approach (~4-6 per run), unbatched, always offering adversarial pushback | Two fixed gates only; menus on request only |
 | Test organization | Recorded default (mirror source tree / convention) in `## Decisions` | An approach-menu item |
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
+| Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
+| Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
 
