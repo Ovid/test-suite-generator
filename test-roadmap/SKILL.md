@@ -17,6 +17,14 @@ nothing else. All the substance — grading, planning, writing tests, bug
 injection — lives in `references/` and loads only once routing has picked a
 mode.
 
+## Before routing: confirm you're in a repo
+
+`compatibility: Requires git` above means this skill needs a working git
+checkout — build mode fans out grading subagents against the tree as it
+stands, and execute mode's `break-it-check` gate runs bug injection in a
+disposable `git worktree`. If the current directory isn't inside a git repo,
+say so and stop before loading either mode file.
+
 ## Route
 
 ```
@@ -39,14 +47,6 @@ This router never loads `references/break-it-check.md`,
 `references/test-pushback.md`, or `references/test-theater.md` directly.
 Those three are loaded by whichever of the two mode files needs them, at the
 point in their own protocol that needs them — not from here.
-
-## Before routing: confirm you're in a repo
-
-`compatibility: Requires git` above means this skill needs a working git
-checkout — build mode fans out grading subagents against the tree as it
-stands, and execute mode's `break-it-check` gate runs bug injection in a
-disposable `git worktree`. If the current directory isn't inside a git repo,
-say so and stop before loading either mode file.
 
 ## Entering build mode
 
