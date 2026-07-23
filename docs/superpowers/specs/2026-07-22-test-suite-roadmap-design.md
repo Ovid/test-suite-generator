@@ -830,6 +830,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
+| Approach-menu rendering | Written prose menu, never a structured picker; compact reflex (prose-not-picker, one decision, pro+con, deep-dive last) restated at the point of use in build mode, full format still single-sourced in `§ Presenting approaches` | Point only at `§` in the on-demand reference file (field run rendered via the harness picker: batched two decisions as tabs, dropped pros/cons and the deep-dive option); reword `§` itself (a micro-test showed the wording already yields compliance when in context — clarity was not the gap, salience was) |
 
 Four `/pushback` reviews produced this table. The first killed a `Done-when:` shell
 predicate (no consumer executed it, exit-0 is not evidence, shell in checked-in
@@ -926,6 +927,21 @@ A withdrawn hypothesis from the same session: the concern that the `description`
 workflow summary would cause agents to skip reading the skill body did not
 reproduce — a head-to-head against a triggers-only variant had both invoking the
 body 2/2, so the description was left unchanged.
+
+**Reasoned, not reproduced — the approach-menu salience fix (2026-07-23):** a
+field run rendered an approach menu through the harness's structured picker,
+which batched two decisions as tabs and showed no pros/cons or deep-dive option
+— violating `§ Presenting approaches` on three counts. A control-vs-treatment
+micro-test (4 + 5 reps) found the *current* `§` wording already yields fully
+compliant prose menus when the section is in context (both arms 100%), so the
+wording was not the gap. The remaining explanation is **salience**: `§` lives in
+an on-demand reference file and was not effectively in context at the menu
+moment (deep in a 60-module analysis), and/or the live picker's pull outweighed
+diluted guidance. The fix — a compact prose-not-picker reflex restated at the
+point of use in `build-test-roadmap.md` — targets that, but its mechanism
+(context dilution, live-tool pull) is **not reproducible in a subagent snapshot**
+by construction; the honest test is an end-to-end run, not yet performed. Filed
+here as reasoned, not verified.
 
 **Read directly in the installed skills:**
 

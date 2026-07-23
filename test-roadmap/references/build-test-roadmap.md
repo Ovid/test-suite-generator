@@ -229,10 +229,25 @@ handled the same way.
 **Approaches** — genuine forks where the answer is taste or is expensive to
 reverse. Roughly four to six across a whole run: test framework/runner, suite
 strategy (unit-first / e2e-first / risk-first), phase ordering, whether to
-rewrite the weak tests Stage 2 found. Every approach goes to an unbatched menu
-in the format defined once in `references/test-pushback.md § Presenting
-approaches` — that format is not restated here, so both mode files point at the
-same definition rather than drifting apart.
+rewrite the weak tests Stage 2 found. Every approach goes to a menu whose full
+format is defined once in `references/test-pushback.md § Presenting approaches`
+— **load that section before presenting the first menu**, because by the time a
+run reaches this point it is deep in analysis and the format is no longer in
+context. The compact rule, restated here so it is in front of you at the moment
+you present rather than only in a file that may not be loaded:
+
+> Present each approach menu as a **written prose menu in your own reply — never
+> a structured multiple-choice or question picker**, even if the harness offers
+> one and it looks tidier. A picker batches decisions as tabs (violating one
+> decision at a time) and has no slot for an option's pros and cons or for the
+> deep-dive option — it silently drops three of the four required parts. Every
+> menu is **one decision**, and every option carries **its own pro and con**;
+> the **last option is always the deep-dive** (a skeptical adversarial pass over
+> the options). Full format and wording: `§ Presenting approaches`.
+
+This is the one place the reference's format is deliberately restated rather
+than only pointed at: it is a *reflex at the point of use*, and a pointer to an
+unloaded file is not a reflex.
 
 **Not on the menu — recorded defaults.** Some things look like a choice but have
 a dominant default and are cheap to reverse, so they are decided once and
