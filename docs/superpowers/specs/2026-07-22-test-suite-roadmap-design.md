@@ -830,6 +830,8 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
+| Units too hard to test | Skipped stub naming the obstacle, surfaced via the framework's native skip-with-reason (one-line STDERR only where none exists); last resort after real test + scaffold-mock both infeasible; a gap-marker — never through `break-it-check`, never toward `Landed:`, never a phase on its own; recorded as `scaffold`-class debt | A new 4th ledger class (`scaffold` already covers code that resists testing); STDERR print as the primary channel (fights the clean-run rule — a skip-with-reason is the standard-tooling channel that rule endorses); silently omitting the unit (an absent test looks like one nobody needed); counting skips toward completion or mutating them (a skip asserts nothing, so it can neither latch a phase nor pass the gate) |
+| Approach-menu rendering | Menu substance in a prose reply (one decision, pro+con per option, recommendation, deep-dive last); answer collected by **one blocking single-question picker** (options as labels, deep-dive included) so *one at a time* and *wait* are tool-enforced. Compact reflex restated at the point of use in build mode; full format single-sourced in `§ Presenting approaches` | Point only at `§` in the on-demand reference file (field run rendered via the harness picker: batched two decisions as tabs, dropped pros/cons and the deep-dive option); reword `§` (a micro-test showed the wording already yields compliance when in context — clarity was not the gap, salience was); **pure prose menu with an instructed "then wait"** (waiting-by-instruction is the same soft-rule fragility class as the salience miss — a bare prose menu does not stop the run); **picker carrying the whole menu** (the original field failure — batches, drops three of four parts) |
 
 Four `/pushback` reviews produced this table. The first killed a `Done-when:` shell
 predicate (no consumer executed it, exit-0 is not evidence, shell in checked-in
@@ -893,6 +895,64 @@ review.
   ran. Together these reproduce that "per-tier coverage = point at a tier
   directory" is false-to-impossible outside path-selected ecosystems — the basis
   for recording per-tier *commands* rather than mandating a layout.
+
+**Discipline rules pressure-tested against subagents (2026-07-23, RED-GREEN per
+`superpowers:writing-skills`):** three of the skill's discipline claims were run as
+single-turn decision scenarios, each with a no-guidance control (RED) and a
+with-skill arm (GREEN), 3–4 reps each:
+
+- **The `break-it-check` gate** (verify by mutation before landing) — control 8/8
+  chose to verify, including a hardened arm where authority explicitly said "green
+  is green, don't break your own code" and it was framed as non-team-practice.
+- **Characterize, don't fix** (pin current behavior; don't fix a bug spotted while
+  writing the test) — control 4/4 pinned current behavior and filed the bug
+  separately, rejecting both the fix and the aspirational assertion.
+- **Don't re-roll the mutation** (a test that survives a boundary-targeted mutation
+  is theater; rewrite the test, don't shop for a redder hunk) — control 3/3 rewrote
+  the test.
+
+Result: **every no-guidance control already complied**, including the two claims
+(characterize-don't-fix, don't-re-roll) chosen because they run *against* model
+priors — so no reproducible RED, and therefore no skill edit was justified. The
+GREEN arms all complied *and* quoted the load-bearing sentence verbatim, which
+verifies the rules are legible and discoverable when read (and that the inline
+restatement of Decision-log rationale is what agents actually cite). What this does
+**not** establish: these are the easiest possible conditions (single model family —
+Opus; fresh context; temptation stated cleanly; virtuous option offered as an
+explicit choice). It says nothing about long-session drift, or about the skill's
+mechanism/structure (worktree, blind mutator, ledger, completion protocol,
+resumability) — none of which a decision-snapshot can reach. A separate
+end-to-end execution on a real repo is the method for those; it has not been run.
+
+A withdrawn hypothesis from the same session: the concern that the `description`'s
+workflow summary would cause agents to skip reading the skill body did not
+reproduce — a head-to-head against a triggers-only variant had both invoking the
+body 2/2, so the description was left unchanged.
+
+**Reasoned, not reproduced — the approach-menu salience fix (2026-07-23):** a
+field run rendered an approach menu through the harness's structured picker,
+which batched two decisions as tabs and showed no pros/cons or deep-dive option
+— violating `§ Presenting approaches` on three counts. A control-vs-treatment
+micro-test (4 + 5 reps) found the *current* `§` wording already yields fully
+compliant prose menus when the section is in context (both arms 100%), so the
+wording was not the gap. The remaining explanation is **salience**: `§` lives in
+an on-demand reference file and was not effectively in context at the menu
+moment (deep in a 60-module analysis), and/or the live picker's pull outweighed
+diluted guidance. The fix — a compact reflex restated at the point of use in
+`build-test-roadmap.md` — targets that, but its mechanism (context dilution,
+live-tool pull) is **not reproducible in a subagent snapshot** by construction;
+the honest test is an end-to-end run, not yet performed. Filed here as reasoned,
+not verified.
+
+The reflex was then revised (same session) from "prose menu, never a picker" to a
+**hybrid**: the menu's substance stays in prose (pros/cons, recommendation,
+deep-dive), but the answer is collected by one blocking single-question picker.
+Reason: a bare prose menu does not *wait* — the agent must remember to stop, which
+is the same soft-rule fragility as the salience miss it was meant to fix — whereas
+a one-question picker blocks until answered, making *wait for the answer* and *one
+at a time* tool-enforced rather than instructed. Also reasoned, not reproduced:
+subagents run autonomously to completion and cannot exhibit waiting, so a snapshot
+can neither reproduce the no-wait failure nor validate the fix — end-to-end only.
 
 **Read directly in the installed skills:**
 
