@@ -8,14 +8,17 @@ with writing tests.
 
 ## The execute-mode loop
 
-Five steps, in order:
+Six steps, in order:
 
 1. **Read `## Decisions` from the roadmap. Never re-ask anything recorded
    there.** The chosen test framework/runner, suite strategy, phase ordering,
-   the weak-test rewrite decision, the test-organization default — all of it
-   was already decided during build mode's Stage 3/Stage 5 and is written down
-   for exactly this reason. Re-asking it here is not caution, it is the
-   resumability requirement failing through the front door.
+   the weak-test rewrite decision, the test-organization default, the per-tier
+   run + coverage commands — all of it was already decided during build mode's
+   Stage 3/Stage 5 and is written down for exactly this reason. Re-asking it
+   here is not caution, it is the resumability requirement failing through the
+   front door. Place the phase's tests according to its `Tier:` and the recorded
+   organization, and use the recorded per-tier command when running or covering
+   that tier.
 2. **Select the candidate phase per the *Completion model* protocol, below.**
    Exactly one phase at a time — the protocol's questioning fires for the
    candidate phase only, never as a batch sweep across every phase in the
@@ -32,6 +35,37 @@ Five steps, in order:
    working branch.** This line is only ever written after step 4 passes — it
    is the gate's own output, not a separate bookkeeping step that could drift
    out of sync with it.
+6. **Surface run instructions for the tests just landed.** See *Run
+   instructions*, below.
+
+### Run instructions
+
+The developer running this skill may not know the codebase, the test runner, or
+even the language. So when a phase's tests are ready, do not leave them to
+reconstruct how to run anything. Print a short block, drawn verbatim from the
+`## Decisions` per-tier commands (never invented on the spot), giving:
+
+- **The new tests** — the command that runs *just this phase's* tests.
+- **This tier with coverage** — the recorded coverage command for the phase's
+  `Tier:`, so the developer can see what these tests cover. Where that tier has
+  no coverage tool, say so explicitly rather than omitting the line.
+- **The whole suite** — the command that runs every test, so they can confirm
+  nothing else broke.
+
+A worked shape:
+
+```
+Phase 3 (integration) tests are in and committed. To run them:
+
+  just these tests:   pytest tests/integration/billing/
+  with coverage:      pytest --cov=billing -m integration
+  the full suite:     pytest
+```
+
+Keep it to the commands and one label each — this is an aide-mémoire for someone
+unfamiliar with the repo, not documentation. The commands are the recorded ones;
+if a command has drifted (the runner changed since build mode), that surfaces
+here as a failed run the developer can see, not as silent wrong advice.
 
 ### What execute mode writes
 
@@ -39,7 +73,7 @@ Execute mode writes **test code only**. It never writes production code, and
 it needs no path-based fence to enforce that — the property that matters
 here, that mutation never touches the developer's tree, is enforced by
 `break-it-check` running its bug injection in a throwaway `git worktree`
-(Inviolate #2). Nothing in this mode's own five steps stands between it and
+(Inviolate #2). Nothing in this mode's own steps stands between it and
 production code, so there is nothing here for a path fence to guard.
 
 **Each phase's tests commit onto the current working branch; the skill creates
