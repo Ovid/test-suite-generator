@@ -21,6 +21,14 @@ with two inversions from that skill: there is no fix to revert — the bug is
 `git worktree`, so nothing in the developer's tree is ever at risk (Inviolate
 #2: production code is never permanently modified).
 
+**When you tell the developer what you're doing, use plain words — never
+"break-it-check," "the gate," "mutation," or "latch"** (see
+`references/test-pushback.md § Talking to the developer`). For example: *"Before
+I call these tests done, I'll make sure they actually work — I'll slip one
+realistic bug into a throwaway copy of the code and confirm the tests catch it,
+then throw the copy away. Your real code is never touched."* What each possible
+result means for the developer is spelled out in *Explaining results*, below.
+
 ## Protocol
 
 Six steps, in order. The order is load-bearing — steps 1 and 2 each protect
@@ -162,6 +170,20 @@ The "no code path" row is the design's staleness detector: a bug cannot be
 injected into a code path that has moved or vanished, and no phase latches
 without passing this gate — so a stale plan gets caught here, not silently
 latched against a `Produces:` path that no longer means what it once did.
+
+## Explaining results to the developer
+
+The table's labels — "theater," "mischaracterization," "order dependence,"
+"flaky," "invalidated" — are for the agent. Tell the developer what the result
+means for their tests, in plain words (§ Talking to the developer):
+
+| Outcome | What to say to the developer |
+|---|---|
+| Mutation applied, test stayed green (*theater*) | *"These tests still passed after I deliberately broke the code they're supposed to check, so they aren't actually testing that behavior. I'll rewrite them so they catch it."* |
+| Baseline red, also red in full suite (*mischaracterization*) | *"These tests disagree with how the code behaves right now. Since the job here is to pin down current behavior, I'll fix the tests to match what the code actually does."* |
+| Baseline red alone, green in full suite (*order dependence*) | *"These tests only pass when run together with others — run on their own they fail — so I can't confirm them in isolation. That's worth cleaning up before relying on them."* |
+| Baseline unstable across two runs (*flaky*) | *"These tests give different results on repeat runs, so I can't trust the outcome yet. They need to be made reliable first."* |
+| No code path implements `Catches:` (*invalidated*) | *"The code this set of tests was planned around has moved or been removed, so the plan for it is out of date and I'll redo it."* |
 
 ## Why a disposable worktree, not an in-tree mutation
 

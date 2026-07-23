@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22
 **Last revised:** 2026-07-23
-**Status:** Approved design, revised after a fourth pushback review (overthinking pass); later revised from trial feedback (zero-repo-knowledge menu premise; build-mode commits its artifacts; phases commit onto the current working branch, no per-phase branch; `Tier:` field + per-tier run/coverage commands instead of a layout mandate; run instructions surfaced on completion)
+**Status:** Approved design, revised after a fourth pushback review (overthinking pass); later revised from trial feedback (zero-repo-knowledge menu premise; build-mode commits its artifacts; phases commit onto the current working branch, no per-phase branch; `Tier:` field + per-tier run/coverage commands instead of a layout mandate; run instructions surfaced on completion; plain-language rule for all developer-facing output; clean test-output discipline)
 **Format:** Agent Skill per https://agentskills.io/specification
 
 ## Purpose
@@ -258,6 +258,17 @@ Execute mode writes test code. It does not write production code — and it neve
 needs a path-based rule to enforce that, because bug injection happens in a
 throwaway worktree that is discarded, never in the developer's tree.
 
+**The tests it writes produce a clean run** — no spurious warnings or stray
+STDOUT/STDERR. Noise buries the signal, and a suite that always warns trains the
+developer to ignore warnings, so the one warning that was a real bug scrolls past
+unnoticed. Order of preference: (1) if the output *matters* — a warning that
+should or shouldn't fire — treat it as behavior and **capture and assert it**, at
+which point it's a test, not noise; (2) suppress uncontrollable third-party
+chatter narrowly at the test boundary, scoped so a *new* warning still stands
+out; (3) never let the written tests add their own debug prints. Where a clean
+run genuinely isn't achievable, say so plainly rather than shipping a suite that
+cries wolf.
+
 ### Why TDD is not bundled
 
 `superpowers:test-driven-development` is deliberately **not** loaded by execute
@@ -438,6 +449,18 @@ recommendation must be strong enough to follow blind and justified by what *this
 repo actually is* (detected stack, existing tests, structure), not by generic
 preference. This premise governs every question the skill asks, not only these
 menus.
+
+**Everything the skill says to the developer is in plain language.** The
+developer knows nothing about the skill's internals, so its working vocabulary —
+`break-it-check`, "the gate," "latch," "mutation," "the ledger",
+`boundary`/`scaffold`, "theater," `Landed:`, "build/execute mode" — stays inside
+the reference files and is *translated* whenever it reaches the developer: name
+what you're doing in ordinary words, report findings as what they mean for the
+tests, and gloss any artifact term on first use. The deep-dive option, for
+instance, is *presented* as "have a second, skeptical pass challenge these
+options and look for a better one," not as "dispatch an adversarial-pushback
+subagent." Single-sourced in `test-pushback.md § Talking to the developer`; the
+mode files and `break-it-check.md` point at it.
 
 That format is specified once in `test-pushback.md § Presenting approaches`; both
 mode files point at it, so the router stays dumb.
@@ -665,14 +688,18 @@ Only the first of those two is a safety violation, but the design avoids both wh
 it cheaply can.
 
 The original bug was never that the agent asked. It was that it asked
-empty-handed:
+empty-handed — and a jargon-laden question fails the same way for a developer new
+to the repo. The question must carry its evidence *and* be in plain words
+(*Talking to the developer*):
 
-- Bad: *"Phase 3 shows Pending. Is it complete?"*
-- Good: *"Phase 3 declares `tests/integration/billing/` on branch
-  `billing-integration-tests`, and its `Landed:` line is empty. Did this land, or
-  should I execute it?"*
+- Bad (empty-handed): *"Phase 3 shows Pending. Is it complete?"*
+- Bad (jargon): *"Phase 3 declares `tests/integration/billing/`; its `Landed:`
+  line is empty — did it land, or should I execute it?"*
+- Good: *"I don't see tests yet for **billing retries** (I'd add them under
+  `tests/integration/billing/`). Did someone already write these — maybe on a
+  branch called `billing-integration-tests` — or should I write them now?"*
 
-The phase block supplies the evidence; the developer supplies the answer.
+The phase's recorded details supply the evidence; the developer supplies the answer.
 
 ### Protocol
 
@@ -681,7 +708,7 @@ The phase block supplies the evidence; the developer supplies the answer.
 | Step | Where | Action |
 |---|---|---|
 | 1 | main agent | `Landed:` populated? → done. Stop. No git, no question. |
-| 2 | main agent | `Landed:` empty → surface the phase block (`Catches:`/`Produces:`/`Branch:`) and ask the human: *"did this land, or should I execute it?"* On *"execute,"* run the phase. On *"it landed,"* write the `Landed:` line from what the human reports. |
+| 2 | main agent | `Landed:` empty → ask the developer, in plain words (*Talking to the developer*), whether these tests were already written or should be written now — using the phase's recorded details as evidence and pointing them at where to check. On *"write them,"* run the phase. On *"already done,"* record it from what they report. |
 
 Step 1 ends the churn permanently: once latched, the phase is never re-examined by
 the control flow — *except* that `Landed:` is human-clearable. The skill never
@@ -795,6 +822,8 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Test organization | Recorded default in `## Decisions`; detected, not menued | An approach-menu item |
 | Tier distinguishability + per-tier coverage | `Tier:` field per phase + detect the tier *selector* and record per-tier run+coverage *commands* | Mandate `unit/ integration/ e2e/` directories (impossible in Go/Rust; assumes path-selector universally) |
 | Run instructions on completion | Execute mode surfaces how to run this phase's tests, the full suite, and per-tier coverage when a phase lands | Assume the developer knows the repo's commands and leave them to find them |
+| Talking to the developer | Plain language everywhere; internal vocabulary (`break-it-check`, "gate", `boundary`/`scaffold`, `Landed:`) translated on the way out; single-sourced in `test-pushback.md` | Let internal codenames and field labels reach the developer as-is |
+| Test output cleanliness | Tests produce a clean run; meaningful output is captured and asserted, uncontrollable noise suppressed narrowly | Let tests emit warnings/chatter (buries signal; trains the developer to ignore warnings that may hide bugs) |
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
 | Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |

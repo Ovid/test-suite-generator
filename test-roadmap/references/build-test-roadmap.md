@@ -132,6 +132,15 @@ Two artifacts, written in this order:
   This is the sink for anything unbounded (Stage 2's full list, the ledger in
   full); main context never carries it.
 
+**Both artifacts are read by the developer, so they follow `references/test-pushback.md
+§ Talking to the developer`.** In particular the ledger's class names
+(`boundary`, `scaffold`, `data`) and any pattern names cited from
+`test-theater.md` are jargon to a newcomer — gloss each in plain words the first
+time it appears in the analysis doc (e.g. *"`scaffold` — a stand-in that only
+exists because the code is hard to test as written; it marks test debt to retire
+later"*). A weak-test verdict states, in plain terms, what regression the test
+would let through, not just its pattern label.
+
 **`docs/test-roadmap.md` is always the target.** The skill never writes into an
 existing `docs/roadmap.md` — that would risk phase-numbering collisions and
 clobbering hand-written entries that live there for other reasons. This path is

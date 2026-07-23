@@ -1,16 +1,47 @@
-# test-pushback — critique mode + approach-menu format
+# test-pushback — how the skill talks to the developer, plus critique mode
 
-This file holds two independent, referenceable pieces. Both mode files
-(`build-test-roadmap.md`, `execute-test-roadmap.md`) point at them by name
-rather than inlining them, so the format and the gate stay defined once:
+This file holds three independent, referenceable pieces. The mode files and
+`break-it-check.md` point at them by name rather than inlining them, so each
+stays defined once:
 
+- **`§ Talking to the developer`** — the plain-language rule that governs
+  *everything* the skill says to the developer.
 - **`§ Presenting approaches`** — the menu format used whenever the skill
   puts a genuine fork in front of the developer.
 - **mode `critique-plan`** — the adversarial pass Stage 4 runs against the
   skill's *own* draft plan before Stage 5 writes it.
 
-Neither section depends on the other, and neither depends on surrounding
-prose in this file — either can be pointed at on its own.
+The sections don't depend on each other and can be pointed at on their own.
+
+---
+
+## § Talking to the developer
+
+Everything the skill says to the developer is in **plain language**. The person
+reading may not know this codebase, the test runner, or the programming
+language — and they know nothing about this skill's internals. So the design's
+own working vocabulary stays *inside these files* and never reaches them
+unglossed: `break-it-check`, "the gate," "latch," "mutation," "operator," "the
+ledger," `boundary`/`scaffold`/`data`, "characterization," "theater,"
+`Landed:`, "the phase block," "build mode"/"execute mode" are words for the
+agent, not for the developer.
+
+Translate, don't emit:
+
+- **Name what you're doing in ordinary words, not by its codename.** Not
+  "running break-it-check" — instead: *"I'll check these tests actually work by
+  slipping a realistic bug into a throwaway copy of the code and confirming the
+  tests catch it. Your real code is never touched."*
+- **Report findings as what they mean for the tests, not by their label.** Not
+  "this test is theater" — instead: *"this test still passed after I
+  deliberately broke the code it's meant to check, so it isn't really testing
+  that behavior."*
+- **When a term does live in the written artifacts** (a tier name, a
+  `boundary`/`scaffold` classification), gloss it in plain words the first time
+  the developer sees it.
+
+The test is simple: if a sentence would only make sense to someone who has read
+this skill's design, rewrite it until it makes sense to someone who has not.
 
 ---
 
@@ -39,9 +70,13 @@ Every menu, presented unbatched, contains:
   newcomer to this codebase can weigh, not insider shorthand.
 - A **recommendation**, with the **reason** grounded in what was detected in
   *this* repo — not a bare pick and not a generic default.
-- A final **deep dive** option: **dispatch a subagent to run an adversarial
-  pushback against the presented options** — challenging the menu itself and
-  surfacing any better option it missed, before committing to any one on it.
+- A final **deep dive** option — internally, dispatch a subagent to run an
+  adversarial pushback against the presented options; but *present it to the
+  developer in plain words*, e.g. *"dig deeper: have a second, skeptical pass
+  challenge these options and check whether there's a better one."* It
+  challenges the menu itself and surfaces any better option it missed, before
+  committing to any one on it. All menu text follows `§ Talking to the
+  developer`.
 
 **One decision at a time, unbatched.** A menu asks for exactly one decision.
 Do not bundle a second question onto it ("...and while we're at it, do you
