@@ -273,10 +273,18 @@ worktree`, so nothing in the developer's tree is ever at risk.
 
 ### Protocol
 
-1. **Create one worktree per phase.** `git worktree add <tmp> HEAD`. Reused across
-   the baseline run and every mutation in the phase, so the (ecosystem-specific,
-   undiscoverable) dependency-install cost is paid once per phase, not once per
-   mutation.
+1. **Sweep, then create one worktree per phase.** First reclaim any strand from a
+   crashed or aborted prior run: `git worktree prune` (which only reclaims records
+   whose checkout dir is already gone — it cannot touch a live worktree), then
+   enumerate `git worktree list --porcelain`, **filter to paths under
+   `.git/test-roadmap-worktrees/`, and force-remove only those.** The removal is
+   filter-to-prefix, never a blanket "remove all worktrees" — that filter is the whole
+   guarantee that a developer's hand-made worktree (which lives outside the prefix) is
+   never in the set. Then `git worktree add .git/test-roadmap-worktrees/<phase> HEAD`.
+   The prefix is fixed and inside `.git`, so the sweep can identify its own worktrees
+   and the checkout never lands in the working tree. The worktree is reused across the baseline run and
+   every mutation in the phase, so the (ecosystem-specific, undiscoverable)
+   dependency-install cost is paid once per phase, not once per mutation.
 2. **Copy the phase's new test files into the worktree, *then* mutate.** Order is
    load-bearing. In colocated-test ecosystems (Rust `#[cfg(test)] mod tests`, Zig
    `test` blocks, D `unittest`, Rust/Python doctests, Elixir `doctest`) the test
@@ -293,7 +301,11 @@ worktree`, so nothing in the developer's tree is ever at risk.
    phase's own tests, and checks for red. A subagent that cannot see the test
    cannot tune the mutation to the test — which severs the root problem: the same
    agent otherwise authors both the test and the mutation meant to indict it.
-5. **`git worktree remove`.** Nothing to restore, nothing to stage, no fence.
+5. **`git worktree remove --force`.** `--force` is required, not optional: the
+   worktree is unclean by construction — the copied-in test is untracked, the
+   injected mutation is a tracked-file modification — and git refuses to remove an
+   unclean worktree without it (verified). Nothing to restore, nothing to stage, no
+   fence. This is only the fast path; step 1's sweep is the guarantee (see below).
 6. **Commit only after the check passes,** on the developer's real tree. The
    operator name(s) used are echoed to the transcript and recorded on the `Landed:`
    line as provenance.
@@ -363,6 +375,18 @@ is no invariant to protect: no snapshot comparison, no staging, no path-based
 fence, and the colocated-test hazard (which broke every path fence, because in
 Rust/Zig/D the test file *is* under `src/`) becomes irrelevant — you mutate a copy
 you are about to throw away.
+
+The same crash the write-fence could not survive can still strand the *worktree
+itself* — the disposable checkout, plus its `.git/worktrees/` record — on any exit
+that skips step 5: a failure-table short-circuit, context exhaustion, a `--watch`
+runner, a hard kill. That is hygiene, not safety — the developer's tree is never
+touched, so inviolate #2 holds regardless — but the leak is closed the way the
+write-fence's window was *not*: on the next entry, never the current exit. Step 1's
+sweep (`git worktree prune` plus a force-remove of test-roadmap's own prefix) runs on
+the one path a crash cannot skip, so a strand from a dead session dies at the start of
+the next one. On-exit removal (step 5) is only the fast path; the sweep is the
+guarantee, because no on-exit cleanup survives the crash this design already refused
+to trust once.
 
 The cost, stated honestly: a fresh worktree has no `node_modules`, no `target/`,
 no venv, no `_build`. Some ecosystems need a full install before tests run, which
@@ -645,6 +669,12 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
    exists, Stage 3 falls back to agent judgment and says so.
 4. The skill detects suite-health precondition *violations* (order dependence,
    flakiness) but does not repair them; it surfaces them for the human.
+5. One `test-roadmap` run per repo at a time. Two concurrent runs share the
+   `.git/test-roadmap-worktrees/` prefix, so one's startup sweep can force-remove the
+   other's in-flight worktree and spoil its gate. Consistent with requirement 1
+   (single developer, one command, *sequential* resume), and bounded — the blast
+   radius is the skill's own scratch, never the developer's other worktrees or
+   production code.
 
 ## Decision log
 
@@ -663,6 +693,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Suite acceptance criterion | Enforced by `break-it-check` | Stated in the design and never enforced |
 | Bug injection location | Throwaway `git worktree` copy | In the developer's working tree behind a write-fence |
 | Write-fence | None needed — the mutated copy is disposable | Whole-tree `git status --porcelain` snapshot; `git add`-then-`checkout` staging; path fences |
+| Worktree cleanup | Sweep-on-entry (`prune` + force-remove own prefix) as the guarantee; `--force` remove as the fast path | On-exit `git worktree remove` as the guarantee (a crash skips it — the write-fence's flaw again); bare `remove` (fails on the always-dirty worktree) |
 | Mutation constraint | Named operator set; early-return/whole-body-removal banned; operator declared by name | Free-form agent-invented mutation |
 | Mutation authorship | Blind mutator subagent (never sees the test); first hunk used | Same agent authors test and mutation; cross-behavior green-check; record diff to file |
 | Coverage | Stage 3 gap-finding only, read-only, never a quality signal | Coverage as a test-quality gate; mutation-only with no gap-finding |
@@ -719,6 +750,13 @@ review.
   `src/foo.rs`. This is why `break-it-check` step 2 copies the test into the
   worktree *before* mutating — the test file and the mutation target are the same
   file.
+- `git worktree remove` refuses an unclean worktree — `fatal: '<path>' contains
+  modified or untracked files, use --force to delete it` — so `break-it-check` step 5
+  must pass `--force`, because the worktree is unclean by construction (copied-in test
+  is untracked, injected mutation is a tracked-file modification). `--force` succeeds.
+- `git worktree prune` reclaims a stale `.git/worktrees/` record after the checkout
+  dir is deleted out from under git (`gitdir file points to non-existent location`).
+  This is what makes step 1's sweep self-healing after a crash.
 
 **Read directly in the installed skills:**
 
