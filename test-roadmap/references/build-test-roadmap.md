@@ -221,6 +221,13 @@ unexamined, default to `scaffold`.** The harm is asymmetric: a `scaffold`
 silently promoted to permanent hides test debt indefinitely, while a `boundary`
 mistakenly recorded as `scaffold` only leaves a note a human later deletes.
 
+When a unit resists testing so completely that even a `scaffold`-mock test can't
+be written, the artifact is not a mock but a **skipped stub** that names the
+obstacle and surfaces it through the framework's skip-with-reason mechanism — see
+execute mode's *Units too hard to test*. It is still `scaffold`-class debt (the
+refactor that makes the unit testable retires it); it is a last resort, and it
+never counts as coverage.
+
 ### Approaches vs findings
 
 Two different things reach the developer during a run, and they are not
@@ -236,14 +243,21 @@ run reaches this point it is deep in analysis and the format is no longer in
 context. The compact rule, restated here so it is in front of you at the moment
 you present rather than only in a file that may not be loaded:
 
-> Present each approach menu as a **written prose menu in your own reply — never
-> a structured multiple-choice or question picker**, even if the harness offers
-> one and it looks tidier. A picker batches decisions as tabs (violating one
-> decision at a time) and has no slot for an option's pros and cons or for the
-> deep-dive option — it silently drops three of the four required parts. Every
-> menu is **one decision**, and every option carries **its own pro and con**;
-> the **last option is always the deep-dive** (a skeptical adversarial pass over
-> the options). Full format and wording: `§ Presenting approaches`.
+> Put the menu's substance in a **written prose menu in your own reply**: one
+> decision, every option with its own pro and con, a recommendation grounded in
+> this repo, and the deep-dive (a skeptical adversarial pass over the options)
+> as the last option. Then collect the answer with **one** structured-question
+> call — the harness's picker — carrying **exactly one question**, the options
+> as short labels only (the deep-dive included). That call is just the enter-key:
+> it blocks until the developer answers, so *one decision at a time* and *wait
+> for the answer* are enforced by the tool, not left to you remembering to stop.
+> **Never put more than one question in that call, and never let the picker
+> carry the menu's substance** — pros and cons, recommendation, and deep-dive
+> stay in the prose above it. A picker carrying the whole menu is what batched
+> decisions as tabs and dropped three of the four required parts in the field; a
+> one-question selector does neither, and unlike a bare prose menu it cannot be
+> followed by more work until the developer answers. Full format and wording:
+> `§ Presenting approaches`.
 
 This is the one place the reference's format is deliberately restated rather
 than only pointed at: it is a *reflex at the point of use*, and a pointer to an

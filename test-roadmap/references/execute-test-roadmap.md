@@ -117,6 +117,44 @@ If clean output genuinely isn't achievable for a phase (the code is
 noisy by construction and the noise can't be captured or scoped), say so plainly
 to the developer rather than shipping a suite that cries wolf.
 
+### Units too hard to test
+
+Some units resist testing so completely that neither a real characterization
+test nor a `scaffold`-mock test (see the ledger in `build-test-roadmap.md`) can
+be written honestly. When that happens — and **only as a last resort, after both
+a real test and a scaffold-mock have been judged infeasible, not merely
+inconvenient** — write a **skipped stub test** that names the obstacle, rather
+than silently leaving the unit out of the suite. An untested unit that is simply
+absent looks like one nobody needed to test; a skipped stub that says *why* keeps
+the gap visible.
+
+**Surface it through the framework's own skip mechanism, with a reason** —
+`pytest.skip(reason=…)`, `@Disabled("…")`, `t.Skip("…")`, whatever the detected
+framework provides — so the message rides with the test and shows in the run
+summary and CI, the same standard-tooling channel *Keep the test run clean* uses
+for meaningful output. The reason states in plain language that the unit is hard
+to test and what makes it so, e.g. *"skipped — builds its own DB handle in the
+constructor; untestable until that dependency is injected."* Only where the
+detected framework has no machine-surfaced skip reason does this fall back to a
+single one-line STDERR statement — never a wall of prints.
+
+A skipped stub is a **gap-marker, not coverage**:
+
+- It **never goes through `break-it-check`** — nothing is asserted, so there is
+  nothing to mutate.
+- It **never counts toward a phase's `Landed:` line.** A phase latches on its
+  real, bug-catching tests; a skip latches nothing.
+- **A phase made only of skipped stubs catches no bug and is dropped as theater
+  (Inviolate #5), not landed.** Skips ride *alongside* real coverage; they never
+  constitute a phase.
+- The obstacle is also recorded as `scaffold`-class debt in the ledger /
+  `docs/test-suite-analysis.md`, naming the refactor (usually a dependency-
+  injection seam) that would make the unit testable and retire the skip.
+
+When the phase's tests land, tell the developer in plain words how many units
+were too hard to test and why, so the skips are a decision they can see rather
+than a silent omission.
+
 ## Why TDD is not bundled
 
 `superpowers:test-driven-development` is deliberately **not** loaded by

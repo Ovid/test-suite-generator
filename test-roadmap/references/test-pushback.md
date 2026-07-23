@@ -86,6 +86,19 @@ then raise the next one. A follow-up that is fully determined by the answer
 just given is not a second decision — it does not need its own menu, just do
 it.
 
+**Collect the answer with a single blocking question, not a prose menu you
+merely intend to stop after.** After presenting the menu above, make exactly
+**one** structured-question call — your harness's picker — carrying **one
+question**, the options as short labels (the deep-dive included). It blocks
+until the developer answers, and that is what actually enforces *wait for the
+answer* and *one at a time*: a prose menu you only plan to stop after does not
+stop the run — a blocking question does. Never carry more than one question in
+that call, and never move the menu's substance (pros and cons, the
+recommendation, the deep-dive rationale) into it — that stays in the prose above;
+the picker is only the selector. A picker made to carry the whole menu is what
+batched decisions as tabs and dropped three of the four required parts; a
+one-question selector does neither.
+
 If an external `pushback` skill is available in the environment, offer it
 as an addition to the adversarial-review option above — never as a
 replacement for it and never as a requirement to proceed. This skill is
