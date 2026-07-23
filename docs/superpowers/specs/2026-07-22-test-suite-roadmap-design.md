@@ -894,6 +894,39 @@ review.
   directory" is false-to-impossible outside path-selected ecosystems — the basis
   for recording per-tier *commands* rather than mandating a layout.
 
+**Discipline rules pressure-tested against subagents (2026-07-23, RED-GREEN per
+`superpowers:writing-skills`):** three of the skill's discipline claims were run as
+single-turn decision scenarios, each with a no-guidance control (RED) and a
+with-skill arm (GREEN), 3–4 reps each:
+
+- **The `break-it-check` gate** (verify by mutation before landing) — control 8/8
+  chose to verify, including a hardened arm where authority explicitly said "green
+  is green, don't break your own code" and it was framed as non-team-practice.
+- **Characterize, don't fix** (pin current behavior; don't fix a bug spotted while
+  writing the test) — control 4/4 pinned current behavior and filed the bug
+  separately, rejecting both the fix and the aspirational assertion.
+- **Don't re-roll the mutation** (a test that survives a boundary-targeted mutation
+  is theater; rewrite the test, don't shop for a redder hunk) — control 3/3 rewrote
+  the test.
+
+Result: **every no-guidance control already complied**, including the two claims
+(characterize-don't-fix, don't-re-roll) chosen because they run *against* model
+priors — so no reproducible RED, and therefore no skill edit was justified. The
+GREEN arms all complied *and* quoted the load-bearing sentence verbatim, which
+verifies the rules are legible and discoverable when read (and that the inline
+restatement of Decision-log rationale is what agents actually cite). What this does
+**not** establish: these are the easiest possible conditions (single model family —
+Opus; fresh context; temptation stated cleanly; virtuous option offered as an
+explicit choice). It says nothing about long-session drift, or about the skill's
+mechanism/structure (worktree, blind mutator, ledger, completion protocol,
+resumability) — none of which a decision-snapshot can reach. A separate
+end-to-end execution on a real repo is the method for those; it has not been run.
+
+A withdrawn hypothesis from the same session: the concern that the `description`'s
+workflow summary would cause agents to skip reading the skill body did not
+reproduce — a head-to-head against a triggers-only variant had both invoking the
+body 2/2, so the description was left unchanged.
+
 **Read directly in the installed skills:**
 
 - `test-driven-development/SKILL.md:126` — *"**Test passes?** You're testing
