@@ -7,6 +7,8 @@ repository — any language, tests or none — and builds a test suite that catc
 regressions. It plans the suite in phases, then writes those tests one phase at a time, across
 as many sessions as it takes. One command: `/test-roadmap`, on day 1 and on day 90.
 
+**Warning**: Alpha code.
+
 ## Why
 
 High coverage numbers lie. A line can be "covered" by a test that asserts nothing — green
