@@ -159,6 +159,8 @@ Field semantics:
   redoing — the skill has no mechanism that would ever produce that state on
   its own.
 
+Each phase's definition-of-done includes a recommendation to run `agentic-review` on the branch before merging, if available. This is not bundled into execute mode: `agentic-review` requires a fresh session with no substantive history, so calling it from within the test-roadmap session would be inert.
+
 ### The test-double & fixture ledger
 
 Every test double and fixture, existing or proposed, gets one classification:
