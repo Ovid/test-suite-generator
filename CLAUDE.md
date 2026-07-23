@@ -4,21 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A design repository for `test-roadmap`, an Agent Skill (per https://agentskills.io/specification)
-that analyzes a repository, grades any existing test suite, emits a phased roadmap for building a
-test suite that catches real regressions, then executes those phases across multiple sessions.
+`test-roadmap`, an Agent Skill (per https://agentskills.io/specification) that analyzes a
+repository, grades any existing test suite, emits a phased roadmap for building a test suite
+that catches real regressions, then executes those phases across multiple sessions.
 
-**There is no implementation yet.** The repository contains design documents only:
+The repository holds two things that must stay in sync:
+
+1. **The skill itself** — `test-roadmap/`, made of Markdown: `SKILL.md` (the router) plus
+   `references/` (the two mode files, the `break-it-check` anti-theater gate, the
+   `test-theater` weak-test catalog, and `test-pushback` — the menu format, the
+   plain-language rule, and the critique pass). The skill *is* these files; this is the
+   implementation. It's alpha.
+2. **The design** — `docs/superpowers/specs/2026-07-22-test-suite-roadmap-design.md`, the
+   source of truth for *why* the skill is shaped the way it is.
 
 ```
+test-roadmap/
+  SKILL.md
+  references/  build-test-roadmap.md, execute-test-roadmap.md,
+               break-it-check.md, test-pushback.md, test-theater.md
 docs/superpowers/specs/2026-07-22-test-suite-roadmap-design.md
 ```
 
-There is no build system, no test suite, no linter, and no dependency manifest. Do not go looking
-for one, and do not scaffold one unless asked — the skill this repo designs is itself made of
-markdown files, so it may never need one.
+There is no build system, test suite, linter, or dependency manifest, and the skill needs
+none — it's Markdown. Do not go looking for one, and do not scaffold one unless asked.
 
-## Working on the design
+## Working on the skill and its design
+
+The skill files and the spec **must stay consistent**: a behavior change lands in
+`test-roadmap/`, and its rationale — including what was rejected and why — lands in the
+spec's `## Decision log`. Don't change one and leave the other stale.
 
 `docs/superpowers/specs/2026-07-22-test-suite-roadmap-design.md` is the source of truth. Its
 `**Status:**` line states where the design stands; read it before assuming the document is settled.
