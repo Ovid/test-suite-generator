@@ -33,6 +33,31 @@ tests break loudly and tell you exactly what you changed.
 - **Pick it up anywhere.** Resumable across unrelated commits, squash merges, fresh clones, and
   sessions that remember nothing about the last one.
 
+## Using it
+
+The whole workflow is one command, run again each session — there's nothing else to
+remember:
+
+```
+/test-roadmap
+```
+
+- **The first run**, when there's no roadmap yet, reads your repo, grades any tests you
+  already have, and drafts a phased plan. Along the way it asks you to settle the few
+  choices that are genuinely yours — test framework, whether to start from unit or
+  end-to-end, what order the phases go in. Nothing gets built without your say-so.
+- **Every run after that** is the *same* command. It reads the roadmap, finds the next
+  phase you haven't built, writes its tests, and proves them — by breaking your code in
+  a throwaway copy and confirming the test screams — before marking the phase done. It
+  works across unrelated commits, fresh clones, and sessions that remember nothing about
+  the last one.
+
+The roadmap file it writes (`docs/test-roadmap.md`) is the memory; `/test-roadmap` is
+the only verb. You never have to recall a second command or which step you were on.
+
+> This is how it's *meant* to be invoked. The skill isn't packaged yet — see **Status**
+> below.
+
 ## Status
 
 This is a **design repository**. The skill isn't built yet — what's here is the design,
