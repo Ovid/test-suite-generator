@@ -55,6 +55,10 @@ remember:
 /test-roadmap
 ```
 
+It runs on a working branch, never your main line. Start it on `main` (or `master`, `trunk`,
+whatever yours is called) and it stops and offers to make a branch first, so your primary
+branch never fills up with half-built tests.
+
 - **The first run**, when there's no roadmap yet, reads your repo, grades any tests you
   already have, and drafts a phased plan. Along the way it asks you to settle the few
   choices that are genuinely yours — test framework, whether to start from unit or

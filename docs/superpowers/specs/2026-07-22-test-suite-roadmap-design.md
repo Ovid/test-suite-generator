@@ -109,6 +109,24 @@ signal something has been put in the wrong place. The router never loads
 `break-it-check.md`, `test-pushback.md`, or `test-theater.md` directly — the two
 mode files do.
 
+Two preconditions guard the router, both in `SKILL.md`, before either mode
+loads: **in a git repo**, and **on a working branch, not the primary one**. The
+second exists because both modes commit as they go — build mode the roadmap,
+execute mode each phase's tests — onto the current branch, and a half-built suite
+must not land on the developer's main line (the same reason a code review runs on
+a feature branch). The primary branch is identified from repo signals in order:
+detached HEAD → treat as not-a-working-branch; else the repo's own
+`refs/remotes/origin/HEAD` pointer (authoritative, no built-in list); else, where
+that is absent, the well-known names (`main`/`master`/`trunk`/`develop`/… —
+examples, not closed) and, if still unconfirmed, **ask once** rather than risk
+building on an oddly-named main line (the Inviolate #4 asymmetry: asking costs a
+keystroke, proceeding-on-primary is the harm). On the primary branch (or detached
+HEAD) the skill offers to create and switch to one working branch and continue in
+the same session; declining stops it. This is one branch at invocation, **not**
+a per-phase branch — it does not reopen the "skill creates no per-phase branch"
+decision (execute mode still accumulates every phase on the current branch). The
+guard lives only in `SKILL.md`; the modes assume it passed and never re-check.
+
 ## Build mode: the five stages
 
 ### Stage 1 — Detect (main agent)
@@ -890,6 +908,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Clean-run gate | Before latching, run the developer's whole suite on their branch (recorded commands) normally *and* under coverage; block or surface on failures/noise/anomalies; fixes are test-side only (assert / suppress narrowly / findings-log), production never patched (Inviolate #1); pre-existing unrelated failures surfaced and put to the developer, not fixed; coverage-tool-absent asked once and recorded | Only print the run commands and never run them (the developer discovers a red or noisy suite themselves, after the phase says "done"); rely on `break-it-check` alone (worktree + phase's tests only — full-suite integration and coverage-only anomalies stay out of frame); skip the coverage pass (misses issues that appear only under instrumentation); let the skill patch production to silence noise (premise change to Inviolate #1 — conflates characterize and fix); use the coverage percentage as a latch signal (Inviolate #3 — coverage never certifies) |
 | Findings log | Dedicated `docs/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
+| Working-branch precondition | `SKILL.md` refuses to build/execute on the primary branch (both modes commit onto it); primary detected via detached-HEAD → `origin/HEAD` (authoritative) → known-name fallback → ask-once when unconfirmed; on primary, offer to create+switch to one working branch and continue in-session, decline stops; guard lives once in the router, modes assume it passed | Let the skill commit onto `main`/`master`/etc. (half-built suite pollutes the developer's main line — the whole reason agentic-review runs on a branch); hard-stop-and-re-run only (agentic-review style — costs a manual `git switch` + re-invocation, friction against requirement 1); warn-but-allow-override (a one-keystroke bypass won't keep the branch clean); hardcode a closed branch-name list (`origin/HEAD` is authoritative where present; names are only the fallback, and unconfirmed cases ask); a per-phase branch (already rejected under *Phase integration* — this is one branch at invocation, not per phase) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
 | Units too hard to test | Skipped stub naming the obstacle, surfaced via the framework's native skip-with-reason (one-line STDERR only where none exists); last resort after real test + scaffold-mock both infeasible; a gap-marker — never through `break-it-check`, never toward `Landed:`, never a phase on its own; recorded as `scaffold`-class debt | A new 4th ledger class (`scaffold` already covers code that resists testing); STDERR print as the primary channel (fights the clean-run rule — a skip-with-reason is the standard-tooling channel that rule endorses); silently omitting the unit (an absent test looks like one nobody needed); counting skips toward completion or mutating them (a skip asserts nothing, so it can neither latch a phase nor pass the gate) |
