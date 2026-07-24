@@ -101,9 +101,12 @@ against a failure mode that only shows up if they run first.
    satisfy first: this is only the fast path. Step 1's sweep is the
    guarantee — see *Why a disposable worktree* below.
 
-6. **Commit only after the check passes**, on the developer's real tree. The
-   operator name(s) used are echoed to the transcript and recorded on the
-   phase's `Landed:` line as provenance.
+6. **Commit only after the check passes** — and after execute mode's step 5
+   clean-run gate also passes — on the developer's real tree. This gate proves
+   the phase's tests catch a bug; that one proves they run clean in the full
+   suite on the branch. Both precede the commit. The operator name(s) used here
+   are echoed to the transcript and recorded on the phase's `Landed:` line as
+   provenance.
 
 **"Run the test" means the phase's own tests, not the whole suite**, at every
 step above. Mutating production code *should* break unrelated tests — that's

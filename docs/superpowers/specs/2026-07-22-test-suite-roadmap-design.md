@@ -43,7 +43,8 @@ produces. An earlier draft of this design stated it and then never enforced it.
   skill does not produce.
 - Choosing a test framework for the user. The skill detects and recommends; the
   human decides.
-- Fixing bugs. The suite pins **current** behavior, correct or not.
+- Fixing bugs. The suite pins **current** behavior, correct or not. The bugs it
+  *notices* while pinning are recorded, not fixed — see *Findings log*.
 - Optimizing the suite as a running artifact — speed, parallelization, fixture
   performance. The skill *names* the suite-health properties its own gate depends
   on (isolation, determinism) and surfaces violations, but it is not a test-suite
@@ -107,6 +108,24 @@ That is the entire routing logic. If it ever grows a third condition, that is a
 signal something has been put in the wrong place. The router never loads
 `break-it-check.md`, `test-pushback.md`, or `test-theater.md` directly — the two
 mode files do.
+
+Two preconditions guard the router, both in `SKILL.md`, before either mode
+loads: **in a git repo**, and **on a working branch, not the primary one**. The
+second exists because both modes commit as they go — build mode the roadmap,
+execute mode each phase's tests — onto the current branch, and a half-built suite
+must not land on the developer's main line (the same reason a code review runs on
+a feature branch). The primary branch is identified from repo signals in order:
+detached HEAD → treat as not-a-working-branch; else the repo's own
+`refs/remotes/origin/HEAD` pointer (authoritative, no built-in list); else, where
+that is absent, the well-known names (`main`/`master`/`trunk`/`develop`/… —
+examples, not closed) and, if still unconfirmed, **ask once** rather than risk
+building on an oddly-named main line (the Inviolate #4 asymmetry: asking costs a
+keystroke, proceeding-on-primary is the harm). On the primary branch (or detached
+HEAD) the skill offers to create and switch to one working branch and continue in
+the same session; declining stops it. This is one branch at invocation, **not**
+a per-phase branch — it does not reopen the "skill creates no per-phase branch"
+decision (execute mode still accumulates every phase on the current branch). The
+guard lives only in `SKILL.md`; the modes assume it passed and never re-check.
 
 ## Build mode: the five stages
 
@@ -192,9 +211,11 @@ Two inputs from Stage 1 feed this stage:
   as if executable. Discovering un-runnability at plan time is the point of having
   a plan stage; discovering it at the gate is the expensive place.
 
-For legacy code, phases pin **current** behavior. Suspected-wrong behavior is
-recorded as a note on the phase, not fixed. Fixing bugs while characterizing a
-legacy system compounds two hard problems into one.
+For legacy code, phases pin **current** behavior. Wrong-looking behavior is not
+fixed — fixing bugs while characterizing a legacy system compounds two hard
+problems into one. Where it clears the inclusion gate (see *Findings log*), it is
+recorded there as a verified, actionable entry with a pointer on the phase that
+pins it; where it does not, it is dropped, not written down as a vague note.
 
 ### Stage 4 — Critique (main agent, via `test-pushback.md` mode `critique-plan`)
 
@@ -223,12 +244,15 @@ self-contained by design, so it remains useful to anyone on any agent.
 
 ### Stage 5 — Write (main agent)
 
-Two artifacts:
+Two artifacts always, plus `docs/test-roadmap-findings.md` when Stage 3/4
+recorded any qualifying finding (see *Findings log*):
 
 - `docs/test-roadmap.md` — the `## Decisions` section, then the phases.
 - `docs/test-suite-analysis.md` — full grading verdicts and the ledger. This
   is the sink for anything unbounded (Stage 2's full list, the ledger); main
   context never carries it.
+- `docs/test-roadmap-findings.md` — the findings log, if written. Execute mode
+  creates it later on the first qualifying finding if this stage wrote none.
 
 `docs/test-roadmap.md` is always the target. The skill never writes into an
 existing `docs/roadmap.md`, avoiding phase-numbering collisions and clobbering of
@@ -243,10 +267,16 @@ first takes, so it must be quiet about anything the developer has already settle
 1. Read `## Decisions` from the roadmap. Do not re-ask anything recorded there.
    Place the phase's tests per its `Tier:` and the recorded organization.
 2. Select the candidate phase per the *Completion model* protocol.
-3. Write the tests for that phase.
+3. Write the tests for that phase. Reading the code this closely is where real
+   bugs surface; log the ones that clear the gate (see *Findings log*).
 4. Run `break-it-check.md`. **This gate is mandatory. No phase latches without it.**
-5. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit.
-6. **Surface run instructions** for the tests just landed — drawn verbatim from
+5. **Run the developer's whole suite on their branch — normally, then under
+   coverage — and don't latch a red or noisy run** (see *Clean-run gate*). This
+   gate can only block or surface; it never edits production code.
+6. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — only after steps 4
+   *and* 5 pass, and including any findings-log entry from step 3, so a finding
+   never lands without its pinning test.
+7. **Surface run instructions** for the tests just landed — drawn verbatim from
    the `## Decisions` per-tier commands: how to run *just this phase's* tests, this
    tier *with coverage*, and *the whole suite*. The developer may not know the
    repo, the runner, or the language, so leaving them to reconstruct the commands
@@ -258,16 +288,63 @@ Execute mode writes test code. It does not write production code — and it neve
 needs a path-based rule to enforce that, because bug injection happens in a
 throwaway worktree that is discarded, never in the developer's tree.
 
-**The tests it writes produce a clean run** — no spurious warnings or stray
-STDOUT/STDERR. Noise buries the signal, and a suite that always warns trains the
-developer to ignore warnings, so the one warning that was a real bug scrolls past
-unnoticed. Order of preference: (1) if the output *matters* — a warning that
-should or shouldn't fire — treat it as behavior and **capture and assert it**, at
-which point it's a test, not noise; (2) suppress uncontrollable third-party
-chatter narrowly at the test boundary, scoped so a *new* warning still stands
-out; (3) never let the written tests add their own debug prints. Where a clean
-run genuinely isn't achievable, say so plainly rather than shipping a suite that
-cries wolf.
+### Clean-run gate
+
+`break-it-check` proves the phase's tests catch a bug, in a worktree, on the
+phase's own tests. It deliberately does **not** run the full suite or touch the
+developer's branch. A separate gate (loop step 5) covers the other axis: before a
+phase latches, **run the developer's whole suite on their branch the way they
+would** — the recorded `## Decisions` commands — **twice**: once normally, once
+under coverage. The coverage pass is not a quality signal (coverage never
+certifies a test — Inviolate #3); it is an **anomaly probe**, because
+instrumentation reorders imports and shifts timing and can surface a warning,
+failure, or hang a normal run hides. Where a tier has no coverage tool, ask the
+developer once and record the answer in `## Decisions` — never re-asked.
+
+Read both runs for failing tests, spurious output (`Wide character in print`,
+deprecation spam, stray STDOUT), and other anomalies. Noise buries the signal,
+and a suite that always warns trains the developer to ignore warnings, so the one
+warning that was a real bug scrolls past unnoticed. The run must end green and
+quiet, or its remaining noise must be a recorded decision.
+
+**Every fix is test-side; production code is never edited (Inviolate #1).** Order
+of preference for output: (1) if it *matters* — a warning that should or shouldn't
+fire — treat it as behavior and **capture and assert it**, at which point it's a
+test, not noise; (2) suppress uncontrollable chatter narrowly at the test
+boundary, scoped so a *new* warning still stands out; (3) never let the written
+tests add their own debug prints. Where the problem is rooted in production, the
+same ladder applies from the test side, and a real defect becomes a findings-log
+entry — the code is not patched. A pre-existing failure in tests this mode did not
+write is surfaced and put to the developer, never silently latched over and never
+fixed as unrelated work. Where a clean run genuinely isn't achievable, or a call
+needs the developer, say so plainly rather than shipping a suite that cries wolf.
+
+## Findings log
+
+Pinning behavior means reading the code closely, which is exactly when a real bug
+surfaces. The skill never fixes it (Inviolate #1), but it records the concrete
+ones so the developer finishes with a to-do list — `docs/test-roadmap-findings.md`
+— instead of a vague memory that something looked off. Full format and rules live
+in `build-test-roadmap.md § The findings log`; the design commitments:
+
+- **This is not the grading "findings"** of *Approaches vs findings*. Those are
+  test-quality verdicts (weak test, mock class) and go to the ledger. This log is
+  production-code bugs the developer fixes later, watching the characterization
+  tests break as they do.
+- **Verified and actionable, or it is not logged.** An entry requires all three:
+  (1) demonstrable current behavior, citing the characterization test that pins
+  it; (2) a concrete in-repo contradiction it violates — a *citation of two things
+  in the repo that disagree*, never the agent's own ruling on what is correct,
+  which is what keeps the log inside pin-only and Inviolate #1 intact; (3) a clear
+  action. Miss any one and the observation is dropped — there is no second-tier
+  "maybe" list, because a log of hunches is the cry-wolf failure the clean-run
+  rule already forbids, wearing a different hat.
+- **`Pinned by:` ties each finding to the suite.** It names the phase whose test
+  locks in the current behavior, so the developer knows in advance which test goes
+  red when they fix the bug — and that the red is the signal, not a regression.
+- **Append-only, committed with whatever produced it**, so it survives a fresh
+  clone; the main agent appends rather than re-reading the accumulated log, so it
+  never re-enters the resume context budget.
 
 ### Why TDD is not bundled
 
@@ -828,7 +905,10 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
 | Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Clean-run gate | Before latching, run the developer's whole suite on their branch (recorded commands) normally *and* under coverage; block or surface on failures/noise/anomalies; fixes are test-side only (assert / suppress narrowly / findings-log), production never patched (Inviolate #1); pre-existing unrelated failures surfaced and put to the developer, not fixed; coverage-tool-absent asked once and recorded | Only print the run commands and never run them (the developer discovers a red or noisy suite themselves, after the phase says "done"); rely on `break-it-check` alone (worktree + phase's tests only — full-suite integration and coverage-only anomalies stay out of frame); skip the coverage pass (misses issues that appear only under instrumentation); let the skill patch production to silence noise (premise change to Inviolate #1 — conflates characterize and fix); use the coverage percentage as a latch signal (Inviolate #3 — coverage never certifies) |
+| Findings log | Dedicated `docs/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
+| Working-branch precondition | `SKILL.md` refuses to build/execute on the primary branch (both modes commit onto it); primary detected via detached-HEAD → `origin/HEAD` (authoritative) → known-name fallback → ask-once when unconfirmed; on primary, offer to create+switch to one working branch and continue in-session, decline stops; guard lives once in the router, modes assume it passed | Let the skill commit onto `main`/`master`/etc. (half-built suite pollutes the developer's main line — the whole reason agentic-review runs on a branch); hard-stop-and-re-run only (agentic-review style — costs a manual `git switch` + re-invocation, friction against requirement 1); warn-but-allow-override (a one-keystroke bypass won't keep the branch clean); hardcode a closed branch-name list (`origin/HEAD` is authoritative where present; names are only the fallback, and unconfirmed cases ask); a per-phase branch (already rejected under *Phase integration* — this is one branch at invocation, not per phase) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |
 | Units too hard to test | Skipped stub naming the obstacle, surfaced via the framework's native skip-with-reason (one-line STDERR only where none exists); last resort after real test + scaffold-mock both infeasible; a gap-marker — never through `break-it-check`, never toward `Landed:`, never a phase on its own; recorded as `scaffold`-class debt | A new 4th ledger class (`scaffold` already covers code that resists testing); STDERR print as the primary channel (fights the clean-run rule — a skip-with-reason is the standard-tooling channel that rule endorses); silently omitting the unit (an absent test looks like one nobody needed); counting skips toward completion or mutating them (a skip asserts nothing, so it can neither latch a phase nor pass the gate) |

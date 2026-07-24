@@ -29,11 +29,22 @@ tests break loudly and tell you exactly what you changed.
 - **It proves each test actually works.** Before a phase counts as done, test-roadmap injects
   the very bug the phase claims to catch and confirms the test goes red. A passing command and
   a covered line are never accepted as proof that a test is any good.
+- **It runs your suite the way you will — and won't call a phase done while it's noisy.** Before
+  a phase lands, test-roadmap runs your whole suite on your branch, once normally and once under
+  coverage — coverage runs shake out problems a plain run hides. Failing tests, stray warnings
+  like `Wide character in print`, anything that would make you distrust the run: it fixes what's
+  its own to fix and surfaces the rest, and it never edits your code to quiet things down.
 - **It never touches your real code.** That bug injection happens in a throwaway git worktree,
   discarded the moment it's done. Your working tree, your database, and your config files are
   never at risk.
 - **Pick it up anywhere.** Resumable across unrelated commits, squash merges, fresh clones, and
   sessions that remember nothing about the last one.
+- **You finish with a bug list you didn't start with.** While pinning your code's behavior,
+  test-roadmap spots where the code contradicts itself — a function that ignores its own
+  docstring, a check that lets through what it claims to reject — and logs each one, with the
+  exact test that proves it. Only concrete, actionable bugs make the list; vague hunches don't.
+  It never fixes them — that's your call — but the day you start, you're working from a real
+  to-do list, not a blank page.
 
 ## Using it
 
@@ -43,6 +54,10 @@ remember:
 ```
 /test-roadmap
 ```
+
+It runs on a working branch, never your main line. Start it on `main` (or `master`, `trunk`,
+whatever yours is called) and it stops and offers to make a branch first, so your primary
+branch never fills up with half-built tests.
 
 - **The first run**, when there's no roadmap yet, reads your repo, grades any tests you
   already have, and drafts a phased plan. Along the way it asks you to settle the few

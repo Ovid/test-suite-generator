@@ -100,9 +100,15 @@ Two Stage 1 findings feed this stage:
 
 **Legacy phases pin current behavior.** Where a phase characterizes existing
 code, every assertion it proposes must match what the code *currently does*.
-Suspected-wrong behavior is recorded as a note on the phase, never turned into a
-different assertion or a code fix — characterizing a legacy system and fixing
-its bugs are two hard problems, and this stage does the first one only.
+Behavior that looks wrong is never turned into a different assertion or a code
+fix — characterizing a legacy system and fixing its bugs are two hard problems,
+and this stage does the first one only. Where a wrong-looking behavior clears the
+inclusion gate in *The findings log* (below), it is recorded there — a concrete,
+actionable entry the developer works from later — and the phase that pins it
+carries a one-line pointer to that entry. Where it does not clear the gate, it is
+dropped, not written down as a vague note: a findings log of hunches is noise the
+developer learns to skip, the same cry-wolf failure the clean-run rule exists to
+prevent.
 
 ## Stage 4 — Critique
 
@@ -124,13 +130,17 @@ legacy phases characterize, they don't fix).
 
 ## Stage 5 — Write (main agent)
 
-Two artifacts, written in this order:
+Two artifacts always, plus a third when this run turned up any qualifying finding:
 
 - **`docs/test-roadmap.md`** — the `## Decisions` section first, then the
   phases.
 - **`docs/test-suite-analysis.md`** — full grading verdicts and the ledger.
   This is the sink for anything unbounded (Stage 2's full list, the ledger in
   full); main context never carries it.
+- **`docs/test-roadmap-findings.md`** — the findings log (see *The findings
+  log*, below), written only if Stage 3/4 recorded at least one entry. If they
+  recorded none, this file is not created here — execute mode creates it the
+  first time a phase surfaces a qualifying finding.
 
 **Both artifacts are read by the developer, so they follow `references/test-pushback.md
 § Talking to the developer`.** In particular the ledger's class names
@@ -148,8 +158,9 @@ also the router's signal for which mode to load on the next invocation, so it is
 **load-bearing and not configurable** — do not rename it, alias it, or write
 phases anywhere else.
 
-**Then commit both artifacts.** `git add docs/test-roadmap.md
-docs/test-suite-analysis.md` and commit them before build mode ends. This is
+**Then commit the artifacts.** `git add docs/test-roadmap.md
+docs/test-suite-analysis.md` — and `docs/test-roadmap-findings.md` if it was
+written — and commit them before build mode ends. This is
 not optional bookkeeping: the roadmap is the router's resume signal, and
 requirement 2 is resumability across *fresh clones*. An uncommitted roadmap
 does not survive a clone, so the next run finds no `docs/test-roadmap.md` and
@@ -235,6 +246,63 @@ obstacle and surfaces it through the framework's skip-with-reason mechanism — 
 execute mode's *Units too hard to test*. It is still `scaffold`-class debt (the
 refactor that makes the unit testable retires it); it is a last resort, and it
 never counts as coverage.
+
+### The findings log
+
+While pinning current behavior, the skill will notice code that looks wrong — a
+return that contradicts its own docstring, a validator that accepts what its name
+says it rejects. It never fixes these (Inviolate #1: characterize now, fix
+later), but it records the good ones so the developer finishes with a concrete
+to-do list instead of a vague memory that "something looked off." That list is
+`docs/test-roadmap-findings.md`.
+
+This is **not** the "findings" of *Approaches vs findings* below — those are
+test-quality verdicts (a weak test, a mock's class) and go to the ledger. This
+log is production-code bugs the developer will fix later, watching the
+characterization tests break as they do.
+
+**The inclusion gate — verified and actionable, or it is not logged.** A log of
+hunches is noise the developer learns to skip, the same cry-wolf failure the
+clean-run rule guards against. An entry is written **only if all three hold**;
+miss any one and the observation is dropped, never downgraded to a vague note
+(there is no second-tier "maybe" list, and nothing lands elsewhere):
+
+1. **Demonstrable current behavior** — a specific input→output or code path, not
+   a general unease. Where a characterization test pins it, cite that test: the
+   test *is* the reproduction.
+2. **A concrete contradiction, cited** — in-repo evidence the behavior violates:
+   a docstring, a type signature, an adjacent validation, a stated invariant, a
+   test name asserting otherwise. This is a **citation of two things in the repo
+   that disagree**, never the agent's own ruling on what the code *should* do —
+   which of the two is right stays the developer's call, and Inviolate #1 stays
+   intact.
+3. **A clear action** — a specific next step, e.g. *"reconcile the docstring at
+   `email.py:40` with the return at `email.py:52`."*
+
+**Entry format** — one block per finding:
+
+```markdown
+## F3 — `is_valid_email` accepts the empty string
+
+Where:     src/email.py:52
+Behavior:  is_valid_email("") returns True.
+Contradicts: the function's own docstring (src/email.py:40): "returns True only
+           for a syntactically valid address."
+Action:    decide which is correct and reconcile them.
+Pinned by: Phase 6 — its test locks in the current True. Fixing the code turns
+           that test red; that is the signal to update the test, not a regression.
+```
+
+`Pinned by:` is filled where a phase's test pins the behavior (always so for a
+finding surfaced *while writing* that phase; for one surfaced at plan time, it
+names the phase that will pin it). It is the line that makes the finding
+actionable *and* ties it to the suite: the developer knows in advance which test
+will go red, and that red is success.
+
+The log is **append-only and committed with whatever produced it**, so it
+survives a fresh clone like the roadmap does. The main agent never holds the
+whole file in context — it appends entries, it does not re-read the accumulated
+log each run.
 
 ### Approaches vs findings
 

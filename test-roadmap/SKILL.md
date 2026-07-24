@@ -12,10 +12,10 @@ compatibility: Requires git
 
 # test-roadmap
 
-This file is the router. It stays dumb on purpose: one check, one branch,
-nothing else. All the substance — grading, planning, writing tests, bug
-injection — lives in `references/` and loads only once routing has picked a
-mode.
+This file is the router. The routing itself stays dumb on purpose: one check,
+two routes, nothing else. A couple of preconditions guard it first. All the
+substance — grading, planning, writing tests, bug injection — lives in
+`references/` and loads only once routing has picked a mode.
 
 ## Before routing: confirm you're in a repo
 
@@ -24,6 +24,51 @@ checkout — build mode fans out grading subagents against the tree as it
 stands, and execute mode's `break-it-check` gate runs bug injection in a
 disposable `git worktree`. If the current directory isn't inside a git repo,
 say so and stop before loading either mode file.
+
+## Before routing: confirm you're on a working branch
+
+This skill commits as it goes — build mode commits the roadmap, execute mode
+commits each phase's tests — all onto the branch you are on right now. A
+half-built test suite landing on the developer's main development line is exactly
+what this check prevents, the same spirit as running a code review on a feature
+branch rather than on `main`. So before routing, confirm the current branch is a
+*working* branch, not the primary one.
+
+Identify the primary branch from repo signals, in order — stop at the first that
+decides:
+
+1. **Detached HEAD** — `git symbolic-ref -q HEAD` prints nothing. There is no
+   branch for the suite to accumulate on at all; treat it like being on the
+   primary branch and offer a working branch (below).
+2. **The repo's own default-branch pointer** — `git symbolic-ref -q --short
+   refs/remotes/origin/HEAD` resolves to e.g. `origin/main`; strip the remote
+   prefix for the default branch name. If the current branch (`git symbolic-ref
+   -q --short HEAD`) equals it, you are on the primary branch. This is the
+   authoritative signal and needs no built-in list of names.
+3. **No such pointer** (a local-only repo, or one where it was never set) — fall
+   back to the well-known primary names: `main`, `master`, `trunk`, `develop`,
+   `devel`, and the like — **examples, not a closed list**, the same stance
+   Stage 1 takes on manifests. If the current branch name matches one, treat it
+   as primary. If it matches none *and* step 2 could not confirm, **ask the
+   developer once, in plain words**, whether this is their main development line —
+   never silently proceed on a branch that might be it. Being wrong toward asking
+   costs a keystroke; being wrong toward building on the main line is the harm
+   this check exists to prevent.
+
+**When the current branch is the primary one (or HEAD is detached), do not route
+yet.** Say why in plain words — *"I build the test suite up commit by commit, and
+you don't want those landing on your main branch while it's half-done, so let's
+put them on a working branch"* — then offer to make one: propose a name
+(`test-roadmap` is a fine default), and on the developer's OK run `git switch -c
+<name>` (or `git checkout -b <name>` on older git) and continue to routing. If
+they decline, stop — never build or execute on the primary branch.
+
+This is the skill's **one** branch: a single working branch, created at
+invocation only when needed. It is **not** a per-phase branch — execute mode
+still commits every phase onto whatever working branch you are on, and the suite
+accumulates there (see `references/execute-test-roadmap.md § What execute mode
+writes`). Both mode files assume this check has already passed and never re-run
+it; the guard lives here, once.
 
 ## Route
 
