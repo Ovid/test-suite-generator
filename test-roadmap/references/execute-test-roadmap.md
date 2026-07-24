@@ -41,9 +41,13 @@ Seven steps, in order:
    place, and how to dispose of what you find. Like `break-it-check`,
    this gate can only **block or surface** — it never edits production code and
    never latches a dirty run.
-6. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit on the current
-   working branch.** This line is only ever written after steps 4 *and* 5 both
-   pass — it is those gates' own output, not a separate bookkeeping step that
+6. **Verify the phase touched no production code, then latch.** Before writing
+   `Landed:`, confirm from git that this phase's pending diff only *adds* test
+   code and *writes* under `paad/test-roadmap/` — no existing production code
+   modified, deleted, moved, or added (see *The phase touched no production
+   code*, below). Only then write `Landed: YYYY-MM-DD <sha> (<operator>)` and
+   commit on the current working branch — written only after steps 4, 5, *and*
+   this check all pass, so it is those gates' own output, not bookkeeping that
    could drift out of sync with them.
 7. **Surface run instructions for the tests just landed.** See *Run
    instructions*, below.
@@ -83,12 +87,14 @@ here as a failed run the developer can see, not as silent wrong advice.
 
 ### What execute mode writes
 
-Execute mode writes **test code only**. It never writes production code, and
-it needs no path-based fence to enforce that — the property that matters
-here, that mutation never touches the developer's tree, is enforced by
-`break-it-check` running its bug injection in a throwaway `git worktree`
-(Inviolate #2). Nothing in this mode's own steps stands between it and
-production code, so there is nothing here for a path fence to guard.
+Execute mode writes **test code only**. It never writes production code. Two
+different things enforce that, on two different axes: `break-it-check`'s
+*mutation* never touches the developer's tree because it runs in a throwaway
+`git worktree` (Inviolate #2), and this mode's *authoring* — step 3, writing the
+tests — is verified after the fact by the step 6 check (*The phase touched no
+production code*, below) before anything latches. Neither is a path-based fence:
+that was rejected (it fails open in colocated-test ecosystems), and the step 6
+check is deliberately diff-aware instead.
 
 **Each phase's tests commit onto the current working branch; the skill creates
 no per-phase branch.** The suite accumulates in place — as phases land, the
@@ -103,6 +109,54 @@ working branch and break resumability (requirement 2). Per-phase review is not
 lost: each phase is its own commit, reviewable with `git show <Landed-sha>`,
 and `agentic-review` runs against the accumulated working branch before it is
 merged upstream.
+
+### The phase touched no production code
+
+*What execute mode writes* states the rule — test code only. This step **verifies
+it from git** before a phase latches, because a rule the skill is trusted to
+follow is worth confirming: a stray edit while writing tests, or a
+refactor-to-make-testable that slipped past Inviolate #1, would otherwise commit
+onto the branch unnoticed.
+
+**The invariant:** a phase's commit may only *add* test code and *write* under
+`paad/test-roadmap/`. It may never modify, delete, move, or add production code.
+
+**The check is diff-aware, not path-aware.** A path fence — "no non-test *file*
+changed" — is the write-fence this design already rejected, and it fails the same
+way: in colocated-test ecosystems (Rust `#[cfg(test)] mod tests`, Zig, D) the unit
+test lives *inside* the production file, so a path fence flags every honest test
+or fails open on a real edit. Use the test organization Stage 1 already detected
+(recorded in `## Decisions`):
+
+- **Separate-file ecosystems** (Python, JS, Go's `_test.go`, Ruby, PHP, Perl):
+  every changed path must be a test file or under `paad/test-roadmap/`.
+- **Same-file colocation** (Rust and the like): a change to a production file
+  must be **purely additive test code** — a new test module or test functions,
+  with *no* pre-existing line altered. Any edit to an existing line is a violation.
+
+Walk this phase's pending changes — `git diff --name-status` plus the diff itself,
+staged and unstaged, *this phase's own commit, not the whole branch* — and check:
+
+- A **delete or rename** (`D`/`R`) of any production path → violation.
+- A **new non-test file** → violation (the skill adds tests, not source).
+- A **modified production file** → violation, unless it is the colocated case
+  above and the diff is purely additive test code.
+- A **build/config/manifest change** (`package.json`, `Cargo.toml`, `.gitignore`,
+  CI config) → **do not latch silently; surface it and ask.** A test sometimes
+  needs a dev-dependency, or the coverage tool the clean-run gate already asked to
+  install; latch it only on the developer's OK. This is the one change outside
+  tests + docs that may be legitimate — everything else in the production tree is
+  not.
+- **Stray generated artifacts** (`.coverage`, `coverage/`, `target/`, editor
+  cruft), caught by the same invariant → they must not be committed; drop them
+  from the commit.
+
+**On any violation, stop — do not latch.** Show the developer the exact change in
+plain words — *"while writing these tests I ended up changing `src/billing.py`,
+which shouldn't happen; the skill only adds tests. Here's what changed — it needs
+undoing before I can call this phase done."* **Never silently revert it**: that
+could destroy work the developer meant to keep or bury a real bug. The human
+decides.
 
 ### Keep the test run clean
 

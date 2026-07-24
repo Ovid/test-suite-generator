@@ -285,16 +285,23 @@ miss any one and the observation is dropped, never downgraded to a vague note
 
 **Entry format** — one block per finding:
 
+Each field is its own bold-labeled paragraph, separated by blank lines — never
+bare adjacent lines, which markdown reflows into a single paragraph:
+
 ```markdown
 ## F3 — `is_valid_email` accepts the empty string
 
-Where:     src/email.py:52
-Behavior:  is_valid_email("") returns True.
-Contradicts: the function's own docstring (src/email.py:40): "returns True only
-           for a syntactically valid address."
-Action:    decide which is correct and reconcile them.
-Pinned by: Phase 6 — its test locks in the current True. Fixing the code turns
-           that test red; that is the signal to update the test, not a regression.
+**Where:** src/email.py:52
+
+**Behavior:** `is_valid_email("")` returns True.
+
+**Contradicts:** the function's own docstring (src/email.py:40): "returns True
+only for a syntactically valid address."
+
+**Action:** decide which is correct and reconcile them.
+
+**Pinned by:** Phase 6 — its test locks in the current True. Fixing the code
+turns that test red; that is the signal to update the test, not a regression.
 ```
 
 `Pinned by:` is filled where a phase's test pins the behavior (always so for a

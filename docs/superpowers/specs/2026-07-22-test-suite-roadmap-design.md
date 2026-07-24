@@ -275,9 +275,10 @@ first takes, so it must be quiet about anything the developer has already settle
 5. **Run the developer's whole suite on their branch — normally, then under
    coverage — and don't latch a red or noisy run** (see *Clean-run gate*). This
    gate can only block or surface; it never edits production code.
-6. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — only after steps 4
-   *and* 5 pass, and including any findings-log entry from step 3, so a finding
-   never lands without its pinning test.
+6. **Verify the phase touched no production code** (see *Production-untouched
+   check*), then write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — only
+   after steps 4, 5, *and* this check pass, and including any findings-log entry
+   from step 3, so a finding never lands without its pinning test.
 7. **Surface run instructions** for the tests just landed — drawn verbatim from
    the `## Decisions` per-tier commands: how to run *just this phase's* tests, this
    tier *with coverage*, and *the whole suite*. The developer may not know the
@@ -286,9 +287,30 @@ first takes, so it must be quiet about anything the developer has already settle
    not invented ones — a command that has drifted surfaces as a failed run the
    developer sees, not as silent wrong advice.
 
-Execute mode writes test code. It does not write production code — and it never
-needs a path-based rule to enforce that, because bug injection happens in a
-throwaway worktree that is discarded, never in the developer's tree.
+Execute mode writes test code, never production code, enforced on two axes:
+`break-it-check`'s *mutation* is confined to a throwaway worktree (Inviolate #2),
+and its *authoring* is verified by the production-untouched check before latching.
+
+### Production-untouched check
+
+Before a phase latches (loop step 6), verify from git that the phase's pending
+diff only *adds* test code and *writes* under `paad/test-roadmap/` — no production
+code modified, deleted, moved, or added. This is the net under step 3's authoring:
+the worktree guards `break-it-check`'s mutation, but nothing else guards a stray
+edit or a refactor-to-make-testable that slips past Inviolate #1.
+
+The check is **diff-aware, not path-aware** — a path fence ("no non-test file
+changed") is the write-fence already rejected here, failing open in colocated-test
+ecosystems (Rust `#[cfg(test)]`, Zig, D) where the test lives inside the production
+file. Reusing Stage 1's detected test organization: separate-file ecosystems
+require every changed path to be a test or a `paad/` doc; same-file colocation
+requires any production-file change to be *purely additive test code*, no
+pre-existing line altered. Deletes/renames of production, new non-test files, and
+non-additive production edits are violations. A build/config/manifest change (a
+test dep, `.gitignore`, CI) is not silently latched — it is surfaced and confirmed,
+the one legitimate non-test change (and the coverage-tool install is already
+developer-approved). On any violation: stop, do not latch, show the developer the
+diff in plain words; never silently revert (it could destroy work or bury a bug).
 
 ### Clean-run gate
 
@@ -908,6 +930,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
 | Build-mode artifacts | Stage 5 commits `paad/test-roadmap/test-roadmap.md` + `paad/test-roadmap/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
 | Generated-file location | All artifacts under `paad/test-roadmap/` (its own namespace: doesn't clutter `docs/`, sits where PAAD tooling expects it, sidesteps a hand-written `docs/roadmap.md`); the roadmap path stays load-bearing + not configurable (router signal); filenames unchanged, just moved | `docs/` directly (clutters the developer's docs; risks colliding with `docs/roadmap.md`); a configurable output path (the router keys off the roadmap's existence, so its path can't vary); renaming the files while moving (unrequested churn — the ask was location, not names) |
+| Production-untouched check | Before latching, verify from git the phase's diff only adds test code + writes under `paad/test-roadmap/`; **diff-aware, not path-aware** (a path fence is the rejected write-fence — fails open in colocated Rust/Zig/D); reuses Stage 1's test-organization detection; deletes/renames/new-source/non-additive-prod-edits are violations → stop, surface, never silently revert; build/config changes surfaced-and-confirmed | A path-based fence ("no non-test file changed" — the rejected write-fence: flags every colocated test or fails open); rely on the worktree alone (guards break-it-check's mutation, not step 3's authoring — a different axis); auto-revert a stray production change (could destroy intended work or bury a bug — the human decides); hard-block build/config changes (a legitimate test dep or the already-approved coverage-tool install couldn't self-complete) |
 | Clean-run gate | Before latching, run the developer's whole suite on their branch (recorded commands) normally *and* under coverage; block or surface on failures/noise/anomalies; fixes are test-side only (assert / suppress narrowly / findings-log), production never patched (Inviolate #1); pre-existing unrelated failures surfaced and put to the developer, not fixed; coverage-tool-absent asked once and recorded | Only print the run commands and never run them (the developer discovers a red or noisy suite themselves, after the phase says "done"); rely on `break-it-check` alone (worktree + phase's tests only — full-suite integration and coverage-only anomalies stay out of frame); skip the coverage pass (misses issues that appear only under instrumentation); let the skill patch production to silence noise (premise change to Inviolate #1 — conflates characterize and fix); use the coverage percentage as a latch signal (Inviolate #3 — coverage never certifies) |
 | Findings log | Dedicated `paad/test-roadmap/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |

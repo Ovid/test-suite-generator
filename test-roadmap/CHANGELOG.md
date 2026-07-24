@@ -25,6 +25,11 @@ Unreleased.
 - **Working-branch guard.** The skill refuses to build or execute on your primary
   branch (`main`, `master`, `trunk`, and the like) and offers to create a working
   branch first, so a half-built suite never lands on your main line.
+- **Production-untouched check.** Before marking a phase done, the skill verifies
+  from git that the phase changed only test files and its own docs — no existing
+  code modified, deleted, or moved. If it finds any production change, it stops and
+  shows you, rather than quietly latching. A build/config change (a test
+  dependency, a coverage tool) is surfaced for your OK rather than assumed.
 
 ### Changed
 
