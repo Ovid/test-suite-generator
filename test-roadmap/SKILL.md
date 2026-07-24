@@ -73,12 +73,12 @@ it; the guard lives here, once.
 ## Route
 
 ```
-docs/test-roadmap.md exists?  →  load references/execute-test-roadmap.md
+paad/test-roadmap/test-roadmap.md exists?  →  load references/execute-test-roadmap.md
                        absent  →  load references/build-test-roadmap.md
 ```
 
 That is the entire routing logic — one file existence check, two branches.
-`docs/test-roadmap.md` is the roadmap this skill itself writes at the end of
+`paad/test-roadmap/test-roadmap.md` is the roadmap this skill itself writes at the end of
 build mode, so its presence is exactly the signal that a previous run already
 did Detect/Grade/Plan/Critique/Write and there is a phased plan to execute
 against. Its absence means this is either the first run against this repo, or
@@ -106,11 +106,11 @@ a built-in list.
 
 The full five-stage protocol — Detect, Grade, Plan, Critique, Write — lives
 in `references/build-test-roadmap.md`. Load it now if
-`docs/test-roadmap.md` is absent.
+`paad/test-roadmap/test-roadmap.md` is absent.
 
 ## Entering execute mode
 
-Load `references/execute-test-roadmap.md` now if `docs/test-roadmap.md`
+Load `references/execute-test-roadmap.md` now if `paad/test-roadmap/test-roadmap.md`
 exists. It reads that file's `## Decisions` section once, selects the next
 phase per the completion protocol, and gets on with writing tests — it does
 not re-detect or re-ask anything build mode already settled.

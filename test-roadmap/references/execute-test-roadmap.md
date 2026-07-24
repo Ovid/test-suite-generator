@@ -1,6 +1,6 @@
 # Execute mode — the completion protocol
 
-Loaded when `docs/test-roadmap.md` already exists — the path every run after
+Loaded when `paad/test-roadmap/test-roadmap.md` already exists — the path every run after
 the first takes. This is the run that must be quiet about anything the
 developer already settled: it reads `## Decisions` once, per phase asks
 exactly the one question the completion model requires, and otherwise gets on
@@ -204,7 +204,7 @@ A skipped stub is a **gap-marker, not coverage**:
   (Inviolate #5), not landed.** Skips ride *alongside* real coverage; they never
   constitute a phase.
 - The obstacle is also recorded as `scaffold`-class debt in the ledger /
-  `docs/test-suite-analysis.md`, naming the refactor (usually a dependency-
+  `paad/test-roadmap/test-suite-analysis.md`, naming the refactor (usually a dependency-
   injection seam) that would make the unit testable and retire the skip.
 
 When the phase's tests land, tell the developer in plain words how many units
@@ -217,7 +217,7 @@ Writing a phase's tests means reading the code closely, which is exactly when a
 real bug surfaces — a return that contradicts its own docstring, a check that
 lets through what it claims to reject. Do not fix it (Inviolate #1: pin current
 behavior; the developer fixes later, watching these tests break). Instead, where
-it clears the inclusion gate, record it in `docs/test-roadmap-findings.md`.
+it clears the inclusion gate, record it in `paad/test-roadmap/test-roadmap-findings.md`.
 
 **The gate and the entry format are defined once in `build-test-roadmap.md
 § The findings log` — use them verbatim.** In short: log an entry only if you can
@@ -228,14 +228,14 @@ the observation — never write it down as a vague note. Set the entry's `Pinned
 by:` to this phase's test, and add a one-line pointer on the phase block in the
 roadmap where the finding maps to it.
 
-Create `docs/test-roadmap-findings.md` if it does not yet exist (build mode
+Create `paad/test-roadmap/test-roadmap-findings.md` if it does not yet exist (build mode
 writes it only when its own stages found something); otherwise append. **Commit
 it in the same commit as the phase's tests** (step 6 of the loop), so a finding
 never lands without the test that pins it, and both survive a fresh clone.
 
 When the phase lands, tell the developer in plain words how many findings you
 logged and point them at the file — *"I logged 2 concrete bugs I hit while
-writing these; they're in `docs/test-roadmap-findings.md`, each with the test
+writing these; they're in `paad/test-roadmap/test-roadmap-findings.md`, each with the test
 that proves it"* — so the log is a decision they can see, not a file they
 stumble on later.
 

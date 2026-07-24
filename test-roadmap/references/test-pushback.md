@@ -45,12 +45,12 @@ this skill's design, rewrite it until it makes sense to someone who has not.
 
 **Always locate a phase for the developer: "Phase X of Y."** Whenever you name a
 phase to the developer, render `Phase <its written number> of <total phases in
-docs/test-roadmap.md>`, so they always know how much is left — the end of the
+paad/test-roadmap/test-roadmap.md>`, so they always know how much is left — the end of the
 tunnel, not just the current step. On the forward-looking "next phase" prompt and
 on any completion question, add progress: `— N done, M to go after this`.
 Recompute all three from the roadmap on every run — never cache them:
 
-- **Y** = count of phase blocks currently in `docs/test-roadmap.md`. Because it
+- **Y** = count of phase blocks currently in `paad/test-roadmap/test-roadmap.md`. Because it
   is recomputed each run, it stays honest when a human adds or drops a phase: the
   total just updates next time, rather than going stale.
 - **done** = count of phases whose `Landed:` line is filled in.

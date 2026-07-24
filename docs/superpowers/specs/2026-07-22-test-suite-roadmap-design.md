@@ -58,6 +58,7 @@ produces. An earlier draft of this design stated it and then never enforced it.
 ```
 test-roadmap/
 ├── SKILL.md                       # router + detection only; stays dumb
+├── CHANGELOG.md                   # notable changes, Keep a Changelog format
 └── references/
     ├── build-test-roadmap.md      # the five stages
     ├── execute-test-roadmap.md    # completion protocol, writes tests, latches
@@ -100,7 +101,7 @@ delivered by on-demand references instead.
 `SKILL.md` does one thing:
 
 ```
-docs/test-roadmap.md exists?  →  load references/execute-test-roadmap.md
+paad/test-roadmap/test-roadmap.md exists?  →  load references/execute-test-roadmap.md
                        absent  →  load references/build-test-roadmap.md
 ```
 
@@ -183,7 +184,7 @@ rather than merely asserting it is unbounded.** Per-item verdicts are bounded in
 size (structured, no pasted source), but *cardinality* is not — a legacy suite may
 yield hundreds. Therefore:
 
-- The full verdict list is written to `docs/test-suite-analysis.md`, not returned
+- The full verdict list is written to `paad/test-roadmap/test-suite-analysis.md`, not returned
   to main context.
 - Main context receives **counts and the top-K by severity only**. A 400-item
   grading result must never land in the resume context budget.
@@ -244,24 +245,25 @@ self-contained by design, so it remains useful to anyone on any agent.
 
 ### Stage 5 — Write (main agent)
 
-Two artifacts always, plus `docs/test-roadmap-findings.md` when Stage 3/4
+Two artifacts always, plus `paad/test-roadmap/test-roadmap-findings.md` when Stage 3/4
 recorded any qualifying finding (see *Findings log*):
 
-- `docs/test-roadmap.md` — the `## Decisions` section, then the phases.
-- `docs/test-suite-analysis.md` — full grading verdicts and the ledger. This
+- `paad/test-roadmap/test-roadmap.md` — the `## Decisions` section, then the phases.
+- `paad/test-roadmap/test-suite-analysis.md` — full grading verdicts and the ledger. This
   is the sink for anything unbounded (Stage 2's full list, the ledger); main
   context never carries it.
-- `docs/test-roadmap-findings.md` — the findings log, if written. Execute mode
+- `paad/test-roadmap/test-roadmap-findings.md` — the findings log, if written. Execute mode
   creates it later on the first qualifying finding if this stage wrote none.
 
-`docs/test-roadmap.md` is always the target. The skill never writes into an
-existing `docs/roadmap.md`, avoiding phase-numbering collisions and clobbering of
-hand-written entries. Its existence is also the router's signal, so its path is
+All generated files live under `paad/test-roadmap/` — the skill's own namespace,
+so it never clutters the developer's `docs/` and sits where PAAD tooling expects
+it; this also sidesteps a hand-written `docs/roadmap.md`. `paad/test-roadmap/test-roadmap.md`
+is always the target: its existence is the router's signal, so its path is
 load-bearing and not configurable.
 
 ## Execute mode
 
-Loaded when `docs/test-roadmap.md` exists. This is the path every run after the
+Loaded when `paad/test-roadmap/test-roadmap.md` exists. This is the path every run after the
 first takes, so it must be quiet about anything the developer has already settled.
 
 1. Read `## Decisions` from the roadmap. Do not re-ask anything recorded there.
@@ -323,7 +325,7 @@ needs the developer, say so plainly rather than shipping a suite that cries wolf
 
 Pinning behavior means reading the code closely, which is exactly when a real bug
 surfaces. The skill never fixes it (Inviolate #1), but it records the concrete
-ones so the developer finishes with a to-do list — `docs/test-roadmap-findings.md`
+ones so the developer finishes with a to-do list — `paad/test-roadmap/test-roadmap-findings.md`
 — instead of a vague memory that something looked off. Full format and rules live
 in `build-test-roadmap.md § The findings log`; the design commitments:
 
@@ -582,7 +584,7 @@ this direction makes inattention safe, which is a mechanism rather than an appea
 to how carefully a human will read a list.
 
 **Decisions are recorded** in a `## Decisions` section at the top of
-`docs/test-roadmap.md`. Execute mode reads it and never re-asks. Without this,
+`paad/test-roadmap/test-roadmap.md`. Execute mode reads it and never re-asks. Without this,
 menus fire again on every resume and requirement 2 fails through the front door.
 Recorded at minimum: the test framework/runner, suite strategy, phase ordering,
 the weak-test rewrite decision, the test-organization default, and the per-tier
@@ -878,7 +880,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Format | Agent Skill (agentskills.io) | Kiro power |
 | Dependencies | Self-contained, pushback-style critique inlined | Hard-depend on roadmap + pushback |
 | Grading | Fan out by tier/directory | Single-pass sampling; conditional fan-out |
-| Grading volume | Full list → `docs/test-suite-analysis.md`; counts + top-K → main context | Full list into main context |
+| Grading volume | Full list → `paad/test-roadmap/test-suite-analysis.md`; counts + top-K → main context | Full list into main context |
 | `superpowers:test-driven-development` | Not bundled | Bundled into execute mode |
 | `paad:agentic-review` | Recommended per phase, not bundled | Bundled into the skill |
 | `superpowers:verification-before-completion` | Adapted into `break-it-check.md` | Inlined as a two-sentence rule |
@@ -904,9 +906,10 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Test output cleanliness | Tests produce a clean run; meaningful output is captured and asserted, uncontrollable noise suppressed narrowly | Let tests emit warnings/chatter (buries signal; trains the developer to ignore warnings that may hide bugs) |
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
-| Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Build-mode artifacts | Stage 5 commits `paad/test-roadmap/test-roadmap.md` + `paad/test-roadmap/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Generated-file location | All artifacts under `paad/test-roadmap/` (its own namespace: doesn't clutter `docs/`, sits where PAAD tooling expects it, sidesteps a hand-written `docs/roadmap.md`); the roadmap path stays load-bearing + not configurable (router signal); filenames unchanged, just moved | `docs/` directly (clutters the developer's docs; risks colliding with `docs/roadmap.md`); a configurable output path (the router keys off the roadmap's existence, so its path can't vary); renaming the files while moving (unrequested churn — the ask was location, not names) |
 | Clean-run gate | Before latching, run the developer's whole suite on their branch (recorded commands) normally *and* under coverage; block or surface on failures/noise/anomalies; fixes are test-side only (assert / suppress narrowly / findings-log), production never patched (Inviolate #1); pre-existing unrelated failures surfaced and put to the developer, not fixed; coverage-tool-absent asked once and recorded | Only print the run commands and never run them (the developer discovers a red or noisy suite themselves, after the phase says "done"); rely on `break-it-check` alone (worktree + phase's tests only — full-suite integration and coverage-only anomalies stay out of frame); skip the coverage pass (misses issues that appear only under instrumentation); let the skill patch production to silence noise (premise change to Inviolate #1 — conflates characterize and fix); use the coverage percentage as a latch signal (Inviolate #3 — coverage never certifies) |
-| Findings log | Dedicated `docs/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
+| Findings log | Dedicated `paad/test-roadmap/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Working-branch precondition | `SKILL.md` refuses to build/execute on the primary branch (both modes commit onto it); primary detected via detached-HEAD → `origin/HEAD` (authoritative) → known-name fallback → ask-once when unconfirmed; on primary, offer to create+switch to one working branch and continue in-session, decline stops; guard lives once in the router, modes assume it passed | Let the skill commit onto `main`/`master`/etc. (half-built suite pollutes the developer's main line — the whole reason agentic-review runs on a branch); hard-stop-and-re-run only (agentic-review style — costs a manual `git switch` + re-invocation, friction against requirement 1); warn-but-allow-override (a one-keystroke bypass won't keep the branch clean); hardcode a closed branch-name list (`origin/HEAD` is authoritative where present; names are only the fallback, and unconfirmed cases ask); a per-phase branch (already rejected under *Phase integration* — this is one branch at invocation, not per phase) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |

@@ -37,7 +37,7 @@ the heading text, not a paraphrase, so verdicts stay greppable across a
 400-item list.
 
 This catalog does not define severity or ranking; that's a Stage 2 concern
-(top-K by severity, full list to `docs/test-suite-analysis.md`). It only
+(top-K by severity, full list to `paad/test-roadmap/test-suite-analysis.md`). It only
 defines what the items in that list are called and how to tell them apart.
 
 ---

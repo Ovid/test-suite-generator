@@ -1,6 +1,6 @@
 # Build mode — the five stages
 
-Loaded when `docs/test-roadmap.md` does not exist yet — the first run against a
+Loaded when `paad/test-roadmap/test-roadmap.md` does not exist yet — the first run against a
 repo, or any run after that file was deleted. Five stages, run in order, each
 handing a concrete artifact to the next: Detect, Grade, Plan, Critique, Write.
 
@@ -67,7 +67,7 @@ Each subagent returns:
 legacy suite may yield hundreds of weak tests — and the design contains that
 rather than merely asserting it away:
 
-- The **full verdict list** is written to `docs/test-suite-analysis.md`, never
+- The **full verdict list** is written to `paad/test-roadmap/test-suite-analysis.md`, never
   returned to main context.
 - **Main context receives counts and the top-K by severity only.** A 400-item
   grading result must never land in the resume context budget. Bounding each
@@ -130,19 +130,21 @@ legacy phases characterize, they don't fix).
 
 ## Stage 5 — Write (main agent)
 
-Two artifacts always, plus a third when this run turned up any qualifying finding:
+All generated files live under `paad/test-roadmap/` — create that directory if
+it does not yet exist. Two artifacts always, plus a third when this run turned up
+any qualifying finding:
 
-- **`docs/test-roadmap.md`** — the `## Decisions` section first, then the
+- **`paad/test-roadmap/test-roadmap.md`** — the `## Decisions` section first, then the
   phases.
-- **`docs/test-suite-analysis.md`** — full grading verdicts and the ledger.
+- **`paad/test-roadmap/test-suite-analysis.md`** — full grading verdicts and the ledger.
   This is the sink for anything unbounded (Stage 2's full list, the ledger in
   full); main context never carries it.
-- **`docs/test-roadmap-findings.md`** — the findings log (see *The findings
+- **`paad/test-roadmap/test-roadmap-findings.md`** — the findings log (see *The findings
   log*, below), written only if Stage 3/4 recorded at least one entry. If they
   recorded none, this file is not created here — execute mode creates it the
   first time a phase surfaces a qualifying finding.
 
-**Both artifacts are read by the developer, so they follow `references/test-pushback.md
+**These artifacts are read by the developer, so they follow `references/test-pushback.md
 § Talking to the developer`.** In particular the ledger's class names
 (`boundary`, `scaffold`, `data`) and any pattern names cited from
 `test-theater.md` are jargon to a newcomer — gloss each in plain words the first
@@ -151,19 +153,21 @@ exists because the code is hard to test as written; it marks test debt to retire
 later"*). A weak-test verdict states, in plain terms, what regression the test
 would let through, not just its pattern label.
 
-**`docs/test-roadmap.md` is always the target.** The skill never writes into an
-existing `docs/roadmap.md` — that would risk phase-numbering collisions and
-clobbering hand-written entries that live there for other reasons. This path is
-also the router's signal for which mode to load on the next invocation, so it is
-**load-bearing and not configurable** — do not rename it, alias it, or write
-phases anywhere else.
+**`paad/test-roadmap/test-roadmap.md` is always the target.** Everything this
+skill generates lives under `paad/test-roadmap/` — its own namespace, so it never
+clutters the developer's `docs/` and sits where PAAD tooling expects it. That
+also sidesteps colliding with a hand-written `docs/roadmap.md` a repo may keep for
+other reasons. The roadmap file's path is the router's signal for which mode to
+load on the next invocation, so it is **load-bearing and not configurable** — do
+not rename it, alias it, move it back under `docs/`, or write phases anywhere
+else.
 
-**Then commit the artifacts.** `git add docs/test-roadmap.md
-docs/test-suite-analysis.md` — and `docs/test-roadmap-findings.md` if it was
+**Then commit the artifacts.** `git add paad/test-roadmap/test-roadmap.md
+paad/test-roadmap/test-suite-analysis.md` — and `paad/test-roadmap/test-roadmap-findings.md` if it was
 written — and commit them before build mode ends. This is
 not optional bookkeeping: the roadmap is the router's resume signal, and
 requirement 2 is resumability across *fresh clones*. An uncommitted roadmap
-does not survive a clone, so the next run finds no `docs/test-roadmap.md` and
+does not survive a clone, so the next run finds no `paad/test-roadmap/test-roadmap.md` and
 silently rebuilds from scratch — the exact churn resumability exists to
 prevent. Execute mode already commits each `Landed:` line the same way (step
 5); build mode committing its own output is the same rule at the front of the
@@ -254,7 +258,7 @@ return that contradicts its own docstring, a validator that accepts what its nam
 says it rejects. It never fixes these (Inviolate #1: characterize now, fix
 later), but it records the good ones so the developer finishes with a concrete
 to-do list instead of a vague memory that "something looked off." That list is
-`docs/test-roadmap-findings.md`.
+`paad/test-roadmap/test-roadmap-findings.md`.
 
 This is **not** the "findings" of *Approaches vs findings* below — those are
 test-quality verdicts (a weak test, a mock's class) and go to the ledger. This
@@ -411,7 +415,7 @@ runs exactly one tier with coverage," and its selector is detected, not assumed.
 ### `## Decisions`
 
 Every recorded default and every approach the developer picked is written to a
-`## Decisions` section at the top of `docs/test-roadmap.md`, before the first
+`## Decisions` section at the top of `paad/test-roadmap/test-roadmap.md`, before the first
 phase. Execute mode reads this section on every resume and **never re-asks**
 anything recorded there — without it, menus would fire again on every run and
 the resumability requirement fails through the front door. Record at minimum:

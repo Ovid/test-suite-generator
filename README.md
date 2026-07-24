@@ -69,7 +69,7 @@ branch never fills up with half-built tests.
   works across unrelated commits, fresh clones, and sessions that remember nothing about
   the last one.
 
-The roadmap file it writes (`docs/test-roadmap.md`) is the memory; `/test-roadmap` is
+The roadmap file it writes (`paad/test-roadmap/test-roadmap.md`) is the memory; `/test-roadmap` is
 the only verb. You never have to recall a second command or which step you were on.
 
 ## Status
