@@ -7,7 +7,9 @@ repository — any language, tests or none — and builds a test suite that catc
 regressions. It plans the suite in phases, then writes those tests one phase at a time, across
 as many sessions as it takes. One command: `/test-roadmap`, on day 1 and on day 90.
 
-**Warning**: Alpha code.
+**Warning**: Alpha code. This repo is a testing ground and, if successful, will
+likely be merged into [PAAD](https://github.com/Ovid/paad). [Read this post
+for more background](https://curtispoe.org/articles/watching-claude-sonnet-outperform-opus).
 
 ## Why
 
