@@ -42,8 +42,12 @@ Six steps, in order:
 
 The developer running this skill may not know the codebase, the test runner, or
 even the language. So when a phase's tests are ready, do not leave them to
-reconstruct how to run anything. Print a short block, drawn verbatim from the
-`## Decisions` per-tier commands (never invented on the spot), giving:
+reconstruct how to run anything. Name the phase as `Phase X of Y` throughout this
+mode — the run-instructions header, the "next phase" prompt, and the completion
+question of step 2 — per `references/test-pushback.md § Talking to the developer`,
+so the developer always sees how many phases remain. Print a short block, drawn
+verbatim from the `## Decisions` per-tier commands (never invented on the spot),
+giving:
 
 - **The new tests** — the command that runs *just this phase's* tests.
 - **This tier with coverage** — the recorded coverage command for the phase's
@@ -55,7 +59,7 @@ reconstruct how to run anything. Print a short block, drawn verbatim from the
 A worked shape:
 
 ```
-Phase 3 (integration) tests are in and committed. To run them:
+Phase 3 of 14 (integration) tests are in and committed. To run them:
 
   just these tests:   pytest tests/integration/billing/
   with coverage:      pytest --cov=billing -m integration
