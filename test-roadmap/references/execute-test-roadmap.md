@@ -24,7 +24,9 @@ Six steps, in order:
    candidate phase only, never as a batch sweep across every phase in the
    roadmap.
 3. **Write the tests for that phase.** This is the only code this step
-   writes — see *What execute mode writes*, below.
+   writes — see *What execute mode writes*, below. Reading the code this
+   closely is where real bugs surface; log the ones that qualify to the
+   findings file — see *Logging suspected bugs*, below.
 4. **Run `references/break-it-check.md`.** This gate is mandatory. **No
    phase latches without it** — not a fast path for a phase that "obviously"
    passes, not a phase where the developer is confident the tests are
@@ -158,6 +160,34 @@ A skipped stub is a **gap-marker, not coverage**:
 When the phase's tests land, tell the developer in plain words how many units
 were too hard to test and why, so the skips are a decision they can see rather
 than a silent omission.
+
+### Logging suspected bugs
+
+Writing a phase's tests means reading the code closely, which is exactly when a
+real bug surfaces — a return that contradicts its own docstring, a check that
+lets through what it claims to reject. Do not fix it (Inviolate #1: pin current
+behavior; the developer fixes later, watching these tests break). Instead, where
+it clears the inclusion gate, record it in `docs/test-roadmap-findings.md`.
+
+**The gate and the entry format are defined once in `build-test-roadmap.md
+§ The findings log` — use them verbatim.** In short: log an entry only if you can
+state (1) the demonstrable current behavior, citing the characterization test
+that pins it; (2) a concrete in-repo contradiction it violates — a citation, not
+your own ruling on what is correct; and (3) a clear action. Miss any one and drop
+the observation — never write it down as a vague note. Set the entry's `Pinned
+by:` to this phase's test, and add a one-line pointer on the phase block in the
+roadmap where the finding maps to it.
+
+Create `docs/test-roadmap-findings.md` if it does not yet exist (build mode
+writes it only when its own stages found something); otherwise append. **Commit
+it in the same commit as the phase's tests** (step 5 of the loop), so a finding
+never lands without the test that pins it, and both survive a fresh clone.
+
+When the phase lands, tell the developer in plain words how many findings you
+logged and point them at the file — *"I logged 2 concrete bugs I hit while
+writing these; they're in `docs/test-roadmap-findings.md`, each with the test
+that proves it"* — so the log is a decision they can see, not a file they
+stumble on later.
 
 ## Why TDD is not bundled
 

@@ -34,6 +34,12 @@ tests break loudly and tell you exactly what you changed.
   never at risk.
 - **Pick it up anywhere.** Resumable across unrelated commits, squash merges, fresh clones, and
   sessions that remember nothing about the last one.
+- **You finish with a bug list you didn't start with.** While pinning your code's behavior,
+  test-roadmap spots where the code contradicts itself — a function that ignores its own
+  docstring, a check that lets through what it claims to reject — and logs each one, with the
+  exact test that proves it. Only concrete, actionable bugs make the list; vague hunches don't.
+  It never fixes them — that's your call — but the day you start, you're working from a real
+  to-do list, not a blank page.
 
 ## Using it
 

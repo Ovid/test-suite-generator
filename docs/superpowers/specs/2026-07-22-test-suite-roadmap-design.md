@@ -43,7 +43,8 @@ produces. An earlier draft of this design stated it and then never enforced it.
   skill does not produce.
 - Choosing a test framework for the user. The skill detects and recommends; the
   human decides.
-- Fixing bugs. The suite pins **current** behavior, correct or not.
+- Fixing bugs. The suite pins **current** behavior, correct or not. The bugs it
+  *notices* while pinning are recorded, not fixed — see *Findings log*.
 - Optimizing the suite as a running artifact — speed, parallelization, fixture
   performance. The skill *names* the suite-health properties its own gate depends
   on (isolation, determinism) and surfaces violations, but it is not a test-suite
@@ -192,9 +193,11 @@ Two inputs from Stage 1 feed this stage:
   as if executable. Discovering un-runnability at plan time is the point of having
   a plan stage; discovering it at the gate is the expensive place.
 
-For legacy code, phases pin **current** behavior. Suspected-wrong behavior is
-recorded as a note on the phase, not fixed. Fixing bugs while characterizing a
-legacy system compounds two hard problems into one.
+For legacy code, phases pin **current** behavior. Wrong-looking behavior is not
+fixed — fixing bugs while characterizing a legacy system compounds two hard
+problems into one. Where it clears the inclusion gate (see *Findings log*), it is
+recorded there as a verified, actionable entry with a pointer on the phase that
+pins it; where it does not, it is dropped, not written down as a vague note.
 
 ### Stage 4 — Critique (main agent, via `test-pushback.md` mode `critique-plan`)
 
@@ -223,12 +226,15 @@ self-contained by design, so it remains useful to anyone on any agent.
 
 ### Stage 5 — Write (main agent)
 
-Two artifacts:
+Two artifacts always, plus `docs/test-roadmap-findings.md` when Stage 3/4
+recorded any qualifying finding (see *Findings log*):
 
 - `docs/test-roadmap.md` — the `## Decisions` section, then the phases.
 - `docs/test-suite-analysis.md` — full grading verdicts and the ledger. This
   is the sink for anything unbounded (Stage 2's full list, the ledger); main
   context never carries it.
+- `docs/test-roadmap-findings.md` — the findings log, if written. Execute mode
+  creates it later on the first qualifying finding if this stage wrote none.
 
 `docs/test-roadmap.md` is always the target. The skill never writes into an
 existing `docs/roadmap.md`, avoiding phase-numbering collisions and clobbering of
@@ -243,9 +249,11 @@ first takes, so it must be quiet about anything the developer has already settle
 1. Read `## Decisions` from the roadmap. Do not re-ask anything recorded there.
    Place the phase's tests per its `Tier:` and the recorded organization.
 2. Select the candidate phase per the *Completion model* protocol.
-3. Write the tests for that phase.
+3. Write the tests for that phase. Reading the code this closely is where real
+   bugs surface; log the ones that clear the gate (see *Findings log*).
 4. Run `break-it-check.md`. **This gate is mandatory. No phase latches without it.**
-5. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit.
+5. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — including any
+   findings-log entry from step 3, so a finding never lands without its pinning test.
 6. **Surface run instructions** for the tests just landed — drawn verbatim from
    the `## Decisions` per-tier commands: how to run *just this phase's* tests, this
    tier *with coverage*, and *the whole suite*. The developer may not know the
@@ -268,6 +276,33 @@ chatter narrowly at the test boundary, scoped so a *new* warning still stands
 out; (3) never let the written tests add their own debug prints. Where a clean
 run genuinely isn't achievable, say so plainly rather than shipping a suite that
 cries wolf.
+
+## Findings log
+
+Pinning behavior means reading the code closely, which is exactly when a real bug
+surfaces. The skill never fixes it (Inviolate #1), but it records the concrete
+ones so the developer finishes with a to-do list — `docs/test-roadmap-findings.md`
+— instead of a vague memory that something looked off. Full format and rules live
+in `build-test-roadmap.md § The findings log`; the design commitments:
+
+- **This is not the grading "findings"** of *Approaches vs findings*. Those are
+  test-quality verdicts (weak test, mock class) and go to the ledger. This log is
+  production-code bugs the developer fixes later, watching the characterization
+  tests break as they do.
+- **Verified and actionable, or it is not logged.** An entry requires all three:
+  (1) demonstrable current behavior, citing the characterization test that pins
+  it; (2) a concrete in-repo contradiction it violates — a *citation of two things
+  in the repo that disagree*, never the agent's own ruling on what is correct,
+  which is what keeps the log inside pin-only and Inviolate #1 intact; (3) a clear
+  action. Miss any one and the observation is dropped — there is no second-tier
+  "maybe" list, because a log of hunches is the cry-wolf failure the clean-run
+  rule already forbids, wearing a different hat.
+- **`Pinned by:` ties each finding to the suite.** It names the phase whose test
+  locks in the current behavior, so the developer knows in advance which test goes
+  red when they fix the bug — and that the red is the signal, not a regression.
+- **Append-only, committed with whatever produced it**, so it survives a fresh
+  clone; the main agent appends rather than re-reading the accumulated log, so it
+  never re-enters the resume context budget.
 
 ### Why TDD is not bundled
 
@@ -828,6 +863,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
 | Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Findings log | Dedicated `docs/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |
 | Decision persistence | `## Decisions` section in the roadmap | Re-ask on each resume |

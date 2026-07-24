@@ -198,11 +198,14 @@ recorded as `scaffold` only leaves a note someone later deletes.
 Where a phase's tests would pin behavior of existing code, check that
 every assertion the phase proposes matches what the code *currently does*,
 not what it *should* do. If the pass turns up behavior that looks wrong,
-that is a note on the phase — recorded as a comment, not turned into a
-different assertion or a code change. Characterizing a legacy system and
-fixing its bugs are two different hard problems; this pass exists to
-police the first, and to stop the second from sneaking in disguised as a
-"more correct" assertion.
+it is never turned into a different assertion or a code change.
+Characterizing a legacy system and fixing its bugs are two different hard
+problems; this pass exists to police the first, and to stop the second
+from sneaking in disguised as a "more correct" assertion. A wrong-looking
+behavior that clears the findings-log inclusion gate (`build-test-roadmap.md
+§ The findings log`) is recorded there — verified, actionable, with the
+phase that pins it — so the developer gets a real to-do list; one that
+does not clear the gate is dropped, not written down as a vague note.
 
 ### After the pass
 
