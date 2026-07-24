@@ -252,9 +252,13 @@ first takes, so it must be quiet about anything the developer has already settle
 3. Write the tests for that phase. Reading the code this closely is where real
    bugs surface; log the ones that clear the gate (see *Findings log*).
 4. Run `break-it-check.md`. **This gate is mandatory. No phase latches without it.**
-5. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — including any
-   findings-log entry from step 3, so a finding never lands without its pinning test.
-6. **Surface run instructions** for the tests just landed — drawn verbatim from
+5. **Run the developer's whole suite on their branch — normally, then under
+   coverage — and don't latch a red or noisy run** (see *Clean-run gate*). This
+   gate can only block or surface; it never edits production code.
+6. Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit — only after steps 4
+   *and* 5 pass, and including any findings-log entry from step 3, so a finding
+   never lands without its pinning test.
+7. **Surface run instructions** for the tests just landed — drawn verbatim from
    the `## Decisions` per-tier commands: how to run *just this phase's* tests, this
    tier *with coverage*, and *the whole suite*. The developer may not know the
    repo, the runner, or the language, so leaving them to reconstruct the commands
@@ -266,16 +270,36 @@ Execute mode writes test code. It does not write production code — and it neve
 needs a path-based rule to enforce that, because bug injection happens in a
 throwaway worktree that is discarded, never in the developer's tree.
 
-**The tests it writes produce a clean run** — no spurious warnings or stray
-STDOUT/STDERR. Noise buries the signal, and a suite that always warns trains the
-developer to ignore warnings, so the one warning that was a real bug scrolls past
-unnoticed. Order of preference: (1) if the output *matters* — a warning that
-should or shouldn't fire — treat it as behavior and **capture and assert it**, at
-which point it's a test, not noise; (2) suppress uncontrollable third-party
-chatter narrowly at the test boundary, scoped so a *new* warning still stands
-out; (3) never let the written tests add their own debug prints. Where a clean
-run genuinely isn't achievable, say so plainly rather than shipping a suite that
-cries wolf.
+### Clean-run gate
+
+`break-it-check` proves the phase's tests catch a bug, in a worktree, on the
+phase's own tests. It deliberately does **not** run the full suite or touch the
+developer's branch. A separate gate (loop step 5) covers the other axis: before a
+phase latches, **run the developer's whole suite on their branch the way they
+would** — the recorded `## Decisions` commands — **twice**: once normally, once
+under coverage. The coverage pass is not a quality signal (coverage never
+certifies a test — Inviolate #3); it is an **anomaly probe**, because
+instrumentation reorders imports and shifts timing and can surface a warning,
+failure, or hang a normal run hides. Where a tier has no coverage tool, ask the
+developer once and record the answer in `## Decisions` — never re-asked.
+
+Read both runs for failing tests, spurious output (`Wide character in print`,
+deprecation spam, stray STDOUT), and other anomalies. Noise buries the signal,
+and a suite that always warns trains the developer to ignore warnings, so the one
+warning that was a real bug scrolls past unnoticed. The run must end green and
+quiet, or its remaining noise must be a recorded decision.
+
+**Every fix is test-side; production code is never edited (Inviolate #1).** Order
+of preference for output: (1) if it *matters* — a warning that should or shouldn't
+fire — treat it as behavior and **capture and assert it**, at which point it's a
+test, not noise; (2) suppress uncontrollable chatter narrowly at the test
+boundary, scoped so a *new* warning still stands out; (3) never let the written
+tests add their own debug prints. Where the problem is rooted in production, the
+same ladder applies from the test side, and a real defect becomes a findings-log
+entry — the code is not patched. A pre-existing failure in tests this mode did not
+write is surfaced and put to the developer, never silently latched over and never
+fixed as unrelated work. Where a clean run genuinely isn't achievable, or a call
+needs the developer, say so plainly rather than shipping a suite that cries wolf.
 
 ## Findings log
 
@@ -863,6 +887,7 @@ same condition, terminally and loudly, minutes later and at no authoring cost.
 | Finding menus | None — ledger; `scaffold` batched, retire-refactor named when planned | Menu per finding; `scaffold` surfaced individually up front |
 | Menu audience | Every menu assumes zero repo knowledge; recommendation must be followable blind and grounded in this repo's detected facts | Assume the developer knows the codebase; generic-preference recommendations |
 | Build-mode artifacts | Stage 5 commits `docs/test-roadmap.md` + `docs/test-suite-analysis.md` | Leave them uncommitted (a fresh clone loses the roadmap → silent rebuild, breaking requirement 2) |
+| Clean-run gate | Before latching, run the developer's whole suite on their branch (recorded commands) normally *and* under coverage; block or surface on failures/noise/anomalies; fixes are test-side only (assert / suppress narrowly / findings-log), production never patched (Inviolate #1); pre-existing unrelated failures surfaced and put to the developer, not fixed; coverage-tool-absent asked once and recorded | Only print the run commands and never run them (the developer discovers a red or noisy suite themselves, after the phase says "done"); rely on `break-it-check` alone (worktree + phase's tests only — full-suite integration and coverage-only anomalies stay out of frame); skip the coverage pass (misses issues that appear only under instrumentation); let the skill patch production to silence noise (premise change to Inviolate #1 — conflates characterize and fix); use the coverage percentage as a latch signal (Inviolate #3 — coverage never certifies) |
 | Findings log | Dedicated `docs/test-roadmap-findings.md`, append-only, committed with whatever produced it; a hard gate — verified + actionable (demonstrable behavior + a cited in-repo contradiction + a clear action) or the observation is dropped; `Pinned by:` ties each finding to the test that will go red; a one-line pointer on the phase keeps Inviolate #1's "note on the phase" literally true, so no premise change | Scatter notes across phase blocks only (not an actionable list — the exact pain that prompted this); fold into `test-suite-analysis.md` (mixes production-code bugs with test-quality verdicts, and that doc is a build-time snapshot while findings accumulate through execution); a confidence gradient / "potential bugs" tier (a log of hunches is cry-wolf noise the developer learns to skip — the developer set the bar at *verified and actionable only*); the agent ruling on what behavior is *correct* (violates pin-only; the log cites a contradiction between two in-repo things and leaves the call to the developer) |
 | Phase integration | Commit each phase onto the current working branch; suite accumulates in place | Skill spins each phase onto its own branch left unmerged (strands the suite off the working branch, dies on fresh clone — same flaw as branch-merge detection) |
 | Rubber-stamp safety | Asymmetric default: silence → `scaffold` | Argue that batching preserves attention |

@@ -8,7 +8,7 @@ with writing tests.
 
 ## The execute-mode loop
 
-Six steps, in order:
+Seven steps, in order:
 
 1. **Read `## Decisions` from the roadmap. Never re-ask anything recorded
    there.** The chosen test framework/runner, suite strategy, phase ordering,
@@ -33,11 +33,19 @@ Six steps, in order:
    right. Skipping this step is skipping the entire mechanism that
    distinguishes this skill's suite from `assert result is not None` a green
    exit code would have waved through.
-5. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit on the current
-   working branch.** This line is only ever written after step 4 passes — it
-   is the gate's own output, not a separate bookkeeping step that could drift
-   out of sync with it.
-6. **Surface run instructions for the tests just landed.** See *Run
+5. **Run the developer's whole suite on their branch, and don't latch a red
+   or noisy run.** Using the recorded `## Decisions` commands, run every test
+   the way the developer would — once normally, once under coverage — and read
+   both runs for failing tests, spurious output, and anomalies. See *Keep the
+   test run clean*, below, for what to run, why the coverage pass earns its
+   place, and how to dispose of what you find. Like `break-it-check`,
+   this gate can only **block or surface** — it never edits production code and
+   never latches a dirty run.
+6. **Write `Landed: YYYY-MM-DD <sha> (<operator>)` and commit on the current
+   working branch.** This line is only ever written after steps 4 *and* 5 both
+   pass — it is those gates' own output, not a separate bookkeeping step that
+   could drift out of sync with them.
+7. **Surface run instructions for the tests just landed.** See *Run
    instructions*, below.
 
 ### Run instructions
@@ -98,14 +106,35 @@ merged upstream.
 
 ### Keep the test run clean
 
-The tests this mode writes must produce a **clean run** — no spurious warnings
-or stray output to STDOUT/STDERR. Two reasons, both about the developer: noise
-buries the signal (a run that prints twenty lines of framework chatter for one
-real failure trains people to skim past it), and a suite that always warns
-teaches the developer to ignore warnings — at which point the one warning that
-*was* a real bug scrolls past unnoticed.
+A phase is not done until the developer's suite runs clean. So before `Landed:`
+(step 5 of the loop, after `break-it-check`), **run the whole suite on the
+developer's branch the way they would** — the recorded `## Decisions` commands,
+verbatim, never invented — **twice**:
 
-So, in order of preference:
+1. **Normally** — the plain whole-suite command.
+2. **Under coverage** — the recorded coverage command. Not for the percentage
+   (coverage never certifies a test — Inviolate #3); this is an **anomaly probe**.
+   Coverage instrumentation reorders imports and shifts timing, so a warning,
+   failure, or hang can appear under coverage that a normal run hides. Run both
+   and compare.
+
+   Where the phase's tier has **no coverage tool** (`## Decisions` records it as
+   `(none)`), ask the developer **once**, in plain words, whether to install one
+   or go without — then record their answer in `## Decisions` so no later phase
+   re-asks. That is the only place this pauses for input; it is not a per-phase
+   question.
+
+Read both runs for three things: **failing tests**, **spurious output** (a
+`Wide character in print` warning, deprecation spam, stray STDOUT), and **any
+other anomaly** — a hang, a result that changes between runs — that would make a
+developer distrust the suite. Two reasons this matters, both about the developer:
+noise buries the signal (twenty lines of framework chatter around one real
+failure trains people to skim past it), and a suite that always warns teaches the
+developer to ignore warnings — at which point the one warning that *was* a real
+bug scrolls past unnoticed. The run must end **green and quiet**, or its remaining
+noise must be a deliberate, recorded decision.
+
+For output that appears, in order of preference:
 
 1. **Treat meaningful output as behavior — capture and assert it.** If the code
    under test emits a deprecation warning, a log line, or a message that *matters*
@@ -119,9 +148,30 @@ So, in order of preference:
 3. **Never let the tests you write add their own noise** — no leftover debug
    prints, no `warn`/`console.log` scaffolding shipped in the committed test.
 
-If clean output genuinely isn't achievable for a phase (the code is
-noisy by construction and the noise can't be captured or scoped), say so plainly
-to the developer rather than shipping a suite that cries wolf.
+**Every fix here is test-side. Production code is never edited (Inviolate #1) —
+where the fix belongs decides what you do:**
+
+- **A failure or noise rooted in the tests this mode wrote** — a leftover print, a
+  test mishandling its own output, a bad assertion — is **yours to fix.** Fix it,
+  re-run both ways, confirm clean.
+- **A failure or noise rooted in production code** — the code under test emits the
+  wide character, not your test — is **never patched here.** Stay on the test side:
+  assert it if it's meaningful behavior, suppress it narrowly if it's
+  uncontrollable, and where it is a real defect, record it in the findings log
+  (`build-test-roadmap.md § The findings log`) if it clears the gate. The suite
+  goes quiet without production behavior changing — and the developer gets the bug
+  on their list instead of a silenced warning they never see.
+- **A pre-existing failure in tests this mode did *not* write** is not this
+  phase's job to fix — but it is **never silently latched over.** Surface it
+  plainly and ask the developer how to proceed; do not fix unrelated tests, and do
+  not mark a phase done on a suite you can see is red.
+
+If a clean run genuinely isn't achievable for a phase (the code is noisy by
+construction and the noise can't be captured or scoped), say so plainly rather
+than shipping a suite that cries wolf. Whenever any of the above needs a judgment
+you can't make alone, discuss it with the developer in plain words
+(`references/test-pushback.md § Talking to the developer`) — the failing test or
+the warning described for what it means, not by its label.
 
 ### Units too hard to test
 
@@ -180,7 +230,7 @@ roadmap where the finding maps to it.
 
 Create `docs/test-roadmap-findings.md` if it does not yet exist (build mode
 writes it only when its own stages found something); otherwise append. **Commit
-it in the same commit as the phase's tests** (step 5 of the loop), so a finding
+it in the same commit as the phase's tests** (step 6 of the loop), so a finding
 never lands without the test that pins it, and both survive a fresh clone.
 
 When the phase lands, tell the developer in plain words how many findings you

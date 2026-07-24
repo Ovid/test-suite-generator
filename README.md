@@ -29,6 +29,11 @@ tests break loudly and tell you exactly what you changed.
 - **It proves each test actually works.** Before a phase counts as done, test-roadmap injects
   the very bug the phase claims to catch and confirms the test goes red. A passing command and
   a covered line are never accepted as proof that a test is any good.
+- **It runs your suite the way you will — and won't call a phase done while it's noisy.** Before
+  a phase lands, test-roadmap runs your whole suite on your branch, once normally and once under
+  coverage — coverage runs shake out problems a plain run hides. Failing tests, stray warnings
+  like `Wide character in print`, anything that would make you distrust the run: it fixes what's
+  its own to fix and surfaces the rest, and it never edits your code to quiet things down.
 - **It never touches your real code.** That bug injection happens in a throwaway git worktree,
   discarded the moment it's done. Your working tree, your database, and your config files are
   never at risk.
